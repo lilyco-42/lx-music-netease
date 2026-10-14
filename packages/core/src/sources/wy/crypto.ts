@@ -18,7 +18,8 @@ const PRESET_KEY = utf8Encode('0CoJUm6Qyw8W8jud')
 const LINUXAPI_KEY = utf8Encode('rFgB&h#%2?^eDg:Q')
 const BASE62 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 const PUBLIC_KEY = '-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgtQn2JZ34ZC28NWYpAUd98iZ37BUrX/aKzmFbt7clFSs6sXqHauqKWqdtLkF2KexO40H1YTX8z2lSgBBOAxLsvaklV8k4cBFK9snQXE9/DDaFt6Rr7iVZMldczhC0JNgTz+SHXT6CBHuX3e9SdB1Ua44oncaTWz7OBGLbCiK45wIDAQAB\n-----END PUBLIC KEY-----'
-const EAPI_KEY = 'e82ckenh8dichen8'
+// 上游把该字符串直接交给 createCipheriv（Node 按 utf8 处理），这里显式编码
+const EAPI_KEY = utf8Encode('e82ckenh8dichen8')
 
 const aesEncrypt = (buffer: Uint8Array, mode: 'aes-128-cbc' | 'aes-128-ecb', key: Uint8Array, iv: Uint8Array) =>
   getPlatform().crypto.aesEncrypt(buffer, mode, key, iv)
