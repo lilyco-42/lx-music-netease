@@ -16,8 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile=false
+      - run: pnpm install --no-frozen-lockfile
       - name: Build tokens
         run: pnpm --filter @lxmn/tokens build
       - name: Verify token export shape
