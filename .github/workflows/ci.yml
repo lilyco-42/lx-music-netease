@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   build:
-    name: Typecheck, Test & Build
+    name: Build, Typecheck & Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,14 +27,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      # 先构建：pnpm -r 按拓扑顺序，@lxmn/core 会先于依赖它的包产出 dist
+      - name: Build packages
+        run: pnpm -r --filter './packages/**' build
+
       - name: Typecheck packages
         run: pnpm -r --filter './packages/**' typecheck
 
       - name: Run kernel tests
         run: pnpm test
-
-      - name: Build packages
-        run: pnpm -r --filter './packages/**' build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
