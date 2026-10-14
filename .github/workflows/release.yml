@@ -237,12 +237,15 @@ jobs:
       # 同步到 lain42.top 的软件下载目录，并生成 SHA256SUMS
       # 未配置 LAIN42_SSH_KEY 时自动跳过，不影响 GitHub Release
       - name: Publish to lain42.top downloads
-        if: ${{ secrets.LAIN42_SSH_KEY != '' }}
         shell: bash
         env:
           SSH_KEY: ${{ secrets.LAIN42_SSH_KEY }}
         run: |
           set -e
+          if [ -z "$SSH_KEY" ]; then
+            echo 'LAIN42_SSH_KEY 未配置，跳过同步到 lain42.top（不影响 GitHub Release）'
+            exit 0
+          fi
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_lain42
           chmod 600 ~/.ssh/id_lain42
