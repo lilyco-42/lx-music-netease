@@ -22,13 +22,24 @@ LX Music 的**网易云音乐风格 UI 重制版**，并把桌面端与移动端
 
 ```
 packages/
-  core/               平台无关内核：PlatformAdapter、统一数据模型、签名算法、音源注册表
+  core/               平台无关内核：PlatformAdapter、统一数据模型、签名算法、音源注册表、会员订阅
   platform-desktop/   桌面端实现：node:crypto / node:zlib / fetch
+  platform-mobile/    移动端实现：纯 JS 加密 + RN fetch + AsyncStorage（无原生加密模块）
   tokens/             设计令牌：实测色值、布局、圆角、字号 + Tailwind preset
 apps/
-  desktop/            Vue3 + Vite + Tailwind v4 + shadcn-vue（已实现）
-  mobile/             (计划) React Native + react-native-reusables
+  desktop/            Vue3 + Vite + Tailwind v4 + shadcn-vue + Electron
+  mobile/             React Native 0.76 + NativeWind
 ```
+
+### 全平台兼容是怎么做到的
+
+内核里所有加密都是**纯 JavaScript**（`packages/core/src/crypto/`）：
+MD5、SHA-1、AES-128 CBC/ECB、RSA（BigInt + 手写 DER 解析）。
+它们与 `node:crypto` **逐字节一致**，有 54 个测试为证。
+
+好处是移动端不再需要 `react-native-quick-md5` 和自写的
+`NativeModules.CryptoModule`——那两个原生模块原本要为 iOS / Android 各维护一份。
+现在同一份 `@lxmn/core` 在桌面、移动、浏览器、测试环境都能直接跑。
 
 平台差异通过 `PlatformAdapter` 接口注入（`setPlatform`），业务代码只依赖接口：
 
@@ -61,8 +72,8 @@ const { crypto, compress, http } = getPlatform()
 ## 测试
 
 ```
-Test Files  2 passed (2)
-     Tests  24 passed (24)
+Test Files  5 passed (5)
+     Tests  112 passed (112)
 ```
 
 其中 `tests/wy-crypto.test.ts` 用**独立的逐字转写参考实现**（直接走 `node:crypto` + `Buffer`，不经 PlatformAdapter）比对，证明移植后的 `eapi` / `linuxapi` 输出与上游字节完全相同。
@@ -73,8 +84,57 @@ Test Files  2 passed (2)
 
 - [`ci.yml`](./.github/workflows/ci.yml) — packages 构建/类型检查/测试 + 桌面端构建
 - [`tokens.yml`](./.github/workflows/tokens.yml) — 设计令牌校验
+- [`release.yml`](./.github/workflows/release.yml) — **全平台安装包**（Windows / macOS / Android / iOS / Linux）
 
-本机只做代码编写与提交，产物从 Actions artifacts 下载（`lxmn-packages`、`lxmn-desktop-dist`）。
+本机只做代码编写与提交，产物从 Actions artifacts 与 GitHub Release 下载。
+
+## 下载与发布
+
+打 tag 即触发全平台构建并发布到 GitHub Release：
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+# 或手动触发
+gh workflow run release.yml
+```
+
+| 平台 | 产物 | 说明 |
+|---|---|---|
+| Windows | `*-windows-setup.exe` / `*.msi` / portable | 未签名，SmartScreen 会提示 |
+| macOS | `*.dmg`（x64 + arm64） | 未签名，首次打开需右键 → 打开 |
+| Android | `*.apk` | 直接侧载安装 |
+| iOS | `LX-Music-unsigned.ipa` | 未签名，需自签或 AltStore 侧载 |
+| Linux | `*.AppImage` | `chmod +x` 后运行 |
+
+Android 默认用模板自带的 debug keystore 签名（可直接安装）；
+配置 `LXMN_KEYSTORE_*` secrets 后自动切换为正式签名。
+
+## 会员与音源订阅
+
+商业模式：**用积分购买会员，会员解锁全部第三方音源**。
+
+1. 打开 <https://lain42.top/shop/>，用积分购买「音乐会员 · 年卡」（**88 元 / 年**）
+2. 在「我的账户」复制订阅链接
+3. 客户端「会员」页粘贴链接 → 激活
+4. 全部音源（wy / tx / kw / kg / mg / bd / xm）自动补全
+
+服务端 `GET /api/music/sub/<token>` 下发订阅文档：
+
+```json
+{
+  "ok": true,
+  "schema": 1,
+  "plan": { "id": "music_annual", "name": "音乐会员 · 年卡", "expires_at": "2027-10-14T22:56:37" },
+  "sources": [{ "id": "wy", "name": "网易云音乐", "type": "builtin", "qualitys": ["flac", "320k"] }],
+  "signature": "…64 位 sha256…"
+}
+```
+
+客户端行为：
+
+- 缓存订阅，**离线也能保持已激活状态**
+- 到期后自动降级，并提示续费
+- `script` 类型音源默认**不执行**，需用户显式同意（安全默认值）
 
 ## 技术选型
 

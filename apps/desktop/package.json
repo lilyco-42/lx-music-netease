@@ -2,13 +2,15 @@
   "name": "@lxmn/app-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "网易云风格桌面端 UI (Vue3 + Vite + Tailwind v4 + shadcn-vue)",
+  "description": "LX Music 桌面端 — 网易云风格 UI（Vue3 + Electron）",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "cross-env LXMN_DEV_URL=http://localhost:5173 electron .",
+    "electron:build": "pnpm build && electron-builder --publish never"
   },
   "dependencies": {
     "@lxmn/core": "workspace:*",
@@ -27,7 +29,11 @@
     "tailwindcss": "^4.1.11",
     "typescript": "^5.9.3",
     "vite": "^6.3.5",
-    "vue-tsc": "^2.2.10"
+    "vue-tsc": "^2.2.10",
+    "cross-env": "^7.0.3",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "main": "electron/main.cjs"
 }

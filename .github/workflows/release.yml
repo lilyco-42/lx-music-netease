@@ -1,0 +1,266 @@
+name: Release
+
+# 打 tag 或手动触发时，构建全平台安装包并发布到 GitHub Release。
+# 产物：Windows msi/exe、macOS dmg、Android apk、iOS ipa、Linux AppImage。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_OPTIONS: --max-old-space-size=4096
+
+jobs:
+  windows:
+    name: Windows (msi / exe)
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Build workspace packages
+        run: pnpm -r --filter './packages/**' build
+      - name: Build renderer
+        run: pnpm --filter @lxmn/app-desktop build
+      - name: Package (nsis + portable)
+        working-directory: apps/desktop
+        run: pnpm exec electron-builder --win nsis portable --publish never
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lxmn-windows
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.msi
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/latest.yml
+          if-no-files-found: warn
+          retention-days: 14
+
+  macos:
+    name: macOS (dmg)
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Build workspace packages
+        run: pnpm -r --filter './packages/**' build
+      - name: Build renderer
+        run: pnpm --filter @lxmn/app-desktop build
+      - name: Package (dmg x64 + arm64, unsigned)
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: pnpm exec electron-builder --mac dmg --x64 --arm64 --publish never
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lxmn-macos
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.blockmap
+          if-no-files-found: warn
+          retention-days: 14
+
+  linux:
+    name: Linux (AppImage)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Build workspace packages
+        run: pnpm -r --filter './packages/**' build
+      - name: Build renderer
+        run: pnpm --filter @lxmn/app-desktop build
+      - name: Package (AppImage)
+        working-directory: apps/desktop
+        run: pnpm exec electron-builder --linux AppImage --publish never
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lxmn-linux
+          path: |
+            apps/desktop/release/*.AppImage
+          if-no-files-found: warn
+          retention-days: 14
+
+  android:
+    name: Android (apk)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Build workspace packages
+        run: pnpm -r --filter './packages/**' build
+      - name: Prepare Android project
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          mkdir -p android/app/src/main/assets
+          # 关闭新架构：避免 CI 上额外拉取 NDK/CMake，构建更稳
+          if [ -f android/gradle.properties ]; then
+            grep -q '^newArchEnabled=' android/gradle.properties \
+              && sed -i 's/^newArchEnabled=.*/newArchEnabled=false/' android/gradle.properties \
+              || echo 'newArchEnabled=false' >> android/gradle.properties
+            grep -q '^android.useAndroidX=' android/gradle.properties \
+              || echo 'android.useAndroidX=true' >> android/gradle.properties
+            echo 'org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m' >> android/gradle.properties
+          fi
+          chmod +x android/gradlew
+      - name: Build release APK
+        working-directory: apps/mobile/android
+        env:
+          LXMN_KEYSTORE_PATH: ${{ secrets.LXMN_KEYSTORE_PATH }}
+          LXMN_KEYSTORE_PASSWORD: ${{ secrets.LXMN_KEYSTORE_PASSWORD }}
+          LXMN_KEY_ALIAS: ${{ secrets.LXMN_KEY_ALIAS }}
+          LXMN_KEY_PASSWORD: ${{ secrets.LXMN_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+      - name: Collect APK
+        shell: bash
+        run: |
+          mkdir -p out
+          find apps/mobile/android -name '*.apk' -exec cp {} out/ \;
+          ls -la out
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lxmn-android
+          path: out/*.apk
+          if-no-files-found: warn
+          retention-days: 14
+
+  ios:
+    name: iOS (unsigned ipa)
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Build workspace packages
+        run: pnpm -r --filter './packages/**' build
+      - name: Install CocoaPods dependencies
+        working-directory: apps/mobile/ios
+        run: |
+          bundle install || true
+          bundle exec pod install || pod install
+      - name: Build unsigned .app
+        working-directory: apps/mobile/ios
+        run: |
+          xcodebuild -workspace LXMusic.xcworkspace \
+            -scheme LXMusic -configuration Release \
+            -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
+            build
+      - name: Package unsigned ipa
+        working-directory: apps/mobile/ios
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/LXMusic.app Payload/
+          zip -qry ../LX-Music-unsigned.ipa Payload
+          ls -la ../LX-Music-unsigned.ipa
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lxmn-ios
+          path: apps/mobile/LX-Music-unsigned.ipa
+          if-no-files-found: warn
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    needs: [windows, macos, linux, android, ios]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        run: |
+          if [ '${{ github.ref_type }}' = 'tag' ]; then
+            echo 'name=${{ github.ref_name }}' >> $GITHUB_OUTPUT
+          else
+            echo "name=v0.1.0-$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+          fi
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-all
+      - name: Flatten artifact tree
+        shell: bash
+        run: |
+          mkdir -p release-files
+          find dist-all -type f -exec cp -n {} release-files/ \;
+          ls -la release-files || true
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: LX Music ${{ steps.tag.outputs.name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## LX Music 全平台发布
+
+            网易云音乐风格 UI 重制版，桌面端与移动端共用同一套内核（@lxmn/core）。
+
+            ### 下载
+            | 平台 | 文件 | 说明 |
+            | --- | --- | --- |
+            | Windows | `*-windows-setup.exe` / `*.msi` | 安装版；另有 portable 免安装 |
+            | macOS | `*.dmg` | 未签名，首次打开请右键 → 打开 |
+            | Android | `*.apk` | 直接侧载安装 |
+            | iOS | `LX-Music-unsigned.ipa` | 未签名，需自行签名或用 AltStore 侧载 |
+            | Linux | `*.AppImage` | chmod +x 后直接运行 |
+
+            ### 会员与音源订阅
+            1. 打开 https://lain42.top/shop/ 用积分购买「音乐会员 · 年卡」（¥88/年）
+            2. 在「我的账户」复制订阅链接
+            3. 在客户端「会员」页粘贴链接并激活，即可一键补全全部第三方音源
+
+            > 未签名安装包会被系统提示，这是正常的。
+          files: release-files/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

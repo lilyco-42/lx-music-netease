@@ -41,6 +41,9 @@ export interface CryptoAdapter {
 
   /** MD5 十六进制摘要 */
   md5(data: string | Uint8Array): string
+
+  /** SHA-1 十六进制摘要（QQ 音乐 zzcSign 需要） */
+  sha1(data: string | Uint8Array): string
 }
 
 /** 压缩能力：桌面用 node:zlib，移动端用 pako */

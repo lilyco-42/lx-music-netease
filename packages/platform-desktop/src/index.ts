@@ -41,6 +41,12 @@ const cryptoAdapter = {
       .update(typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data))
       .digest('hex')
   },
+
+  sha1(data: string | Uint8Array): string {
+    return createHash('sha1')
+      .update(typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data))
+      .digest('hex')
+  },
 }
 
 const compressAdapter = {
