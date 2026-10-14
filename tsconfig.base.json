@@ -15,6 +15,17 @@
     "isolatedModules": true,
     "declaration": true,
     "sourceMap": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@lxmn/core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@lxmn/platform-desktop": [
+        "./packages/platform-desktop/src/index.ts"
+      ],
+      "@lxmn/tokens": [
+        "./packages/tokens/src/index.ts"
+      ]
+    }
   }
 }
