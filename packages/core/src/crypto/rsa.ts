@@ -8,6 +8,18 @@
  * BigInt 在 Hermes (RN 0.70+)、JSC、V8 均已支持。
  */
 
+/**
+ * 取密码学安全随机数。
+ * 用索引签名访问 globalThis，避免在不同 TS lib 配置下报 TS7017；
+ * 找不到 crypto 时退化为 Math.random（仅 PKCS#1 填充需要，NO_PADDING 用不到）。
+ */
+function getRandomValues(out: Uint8Array): Uint8Array {
+  const g = globalThis as unknown as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }
+  if (g.crypto?.getRandomValues) return g.crypto.getRandomValues(out)
+  for (let i = 0; i < out.length; i++) out[i] = Math.floor(Math.random() * 256)
+  return out
+}
+
 /* ---------- 最小 ASN.1 DER 解析 ---------- */
 
 interface DerNode {
@@ -159,9 +171,7 @@ export function rsaEncrypt(
     const psLen = size - data.length - 3
     if (psLen < 8) throw new Error('[lxmn/rsa] Message too long for PKCS#1 padding')
     const ps = new Uint8Array(psLen)
-    const rnd = globalThis.crypto?.getRandomValues
-      ? globalThis.crypto.getRandomValues(new Uint8Array(psLen))
-      : Uint8Array.from({ length: psLen }, () => 1 + Math.floor(Math.random() * 255))
+    const rnd = getRandomValues(new Uint8Array(psLen))
     for (let i = 0; i < psLen; i++) ps[i] = rnd[i] === 0 ? 1 : rnd[i]!
     block = new Uint8Array(size)
     block[1] = 0x02

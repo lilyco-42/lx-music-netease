@@ -63,6 +63,13 @@ app.on('window-all-closed', () => {
  * 无 CORS 限制的请求：音乐源接口普遍不带 CORS 头，
  * 渲染层直接 fetch 会被浏览器拦；这里用主进程 net 代发。
  */
+/** 只允许 http(s) 外链，避免 file:// 等本地协议被滥用 */
+ipcMain.handle('lxmn:open-external', async (_e, url) => {
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return false
+  await shell.openExternal(url)
+  return true
+})
+
 ipcMain.handle('lxmn:request', async (_e, options) => {
   const res = await net.fetch(options.url, {
     method: options.method || 'GET',

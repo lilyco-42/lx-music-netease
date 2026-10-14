@@ -2,7 +2,7 @@
  * 订阅客户端：把「一条链接」变成「可用的音源集合」
  *
  * 对应 lx-music 原版的「导入自定义源」，但做成了订阅制：
- *   1. 用户在商城购买会员 → 得到 https://lain42.top/api/music/sub/<token>
+ *   1. 用户在商城购买会员 → 得到 https://lain42.top/studio/api/music/sub/<token>
  *   2. 客户端填入该链接
  *   3. 拉取订阅文档 → 校验 → 注册音源
  *   4. 到期自动失效
@@ -18,7 +18,13 @@ import type {
   SubscriptionDocument,
 } from './types'
 
-const DEFAULT_BASE = 'https://lain42.top'
+/**
+ * 服务端根地址。
+ *
+ * 必须带 /studio 前缀：pingap 只把 https://lain42.top/studio/api/* 反代到
+ * billing 服务；裸域名的 /api/* 会命中前端 SPA 并返回 HTML。
+ */
+const DEFAULT_BASE = 'https://lain42.top/studio'
 const DEFAULT_KEY = 'lxmn.subscription'
 
 interface CacheEntry {

@@ -1,6 +1,6 @@
 /**
  * 预加载脚本：把受控的原生能力暴露给渲染层。
- * 渲染层据此组装 @lxmn/platform-desktop 的 http / storage。
+ * 渲染层据此组装平台适配器（http 走主进程以绕过 CORS，存储走 localStorage）。
  */
 const { contextBridge, ipcRenderer } = require('electron')
 
@@ -13,4 +13,6 @@ contextBridge.exposeInMainWorld('lxmnNative', {
     keys: () => ipcRenderer.invoke('lxmn:storage:keys'),
   },
   appInfo: () => ipcRenderer.invoke('lxmn:app:info'),
+  /** 用系统浏览器打开外部链接（购买页等） */
+  openExternal: (url) => ipcRenderer.invoke('lxmn:open-external', url),
 })

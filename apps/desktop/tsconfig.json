@@ -5,6 +5,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@lxmn/core": [
+        "../../packages/core/src/index.ts"
+      ],
+      "@lxmn/tokens": [
+        "../../packages/tokens/src/index.ts"
       ]
     },
     "jsx": "preserve",

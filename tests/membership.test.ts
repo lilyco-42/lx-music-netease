@@ -22,7 +22,7 @@ const doc = {
   plan: { id: 'music_annual', name: '音乐会员 · 年卡', expires_at: future, active: true },
   sources: [
     { id: 'wy', name: '网易云音乐', type: 'builtin', qualitys: ['flac', '320k'] },
-    { id: 'tx', name: 'QQ 音乐', type: 'manifest', url: 'https://lain42.top/api/music/source/tx' },
+    { id: 'tx', name: 'QQ 音乐', type: 'manifest', url: 'https://lain42.top/studio/api/music/source/tx' },
     { id: 'kw', name: '酷我', type: 'script', url: 'https://x/kw.js', sha256: 'a'.repeat(64) },
   ],
   signature: 'deadbeef',
@@ -45,25 +45,25 @@ const makePlatform = (responder: (url: string) => { status: number; body: string
 
 describe('membership constants', () => {
   it('points at the real shop and the 88 CNY/year price', () => {
-    expect(SHOP_URL).toBe('https://lain42.top/shop/')
+    expect(SHOP_URL).toBe('https://lain42.top/studio/shop/')
     expect(ANNUAL_PRICE_CNY).toBe(88)
   })
 })
 
 describe('normalizeUrl', () => {
   it('expands a bare token into the subscription endpoint', () => {
-    expect(normalizeUrl('abc12345XYZ', 'https://lain42.top'))
-      .toBe('https://lain42.top/api/music/sub/abc12345XYZ')
+    expect(normalizeUrl('abc12345XYZ', 'https://lain42.top/studio'))
+      .toBe('https://lain42.top/studio/api/music/sub/abc12345XYZ')
   })
   it('keeps a full https link', () => {
-    expect(normalizeUrl('https://lain42.top/api/music/sub/tok12345', 'https://lain42.top'))
-      .toBe('https://lain42.top/api/music/sub/tok12345')
+    expect(normalizeUrl('https://lain42.top/studio/api/music/sub/tok12345', 'https://lain42.top/studio'))
+      .toBe('https://lain42.top/studio/api/music/sub/tok12345')
   })
   it('rejects plain http for non-localhost', () => {
-    expect(() => normalizeUrl('http://evil.example/sub/x', 'https://lain42.top')).toThrow(/https/)
+    expect(() => normalizeUrl('http://evil.example/sub/x', 'https://lain42.top/studio')).toThrow(/https/)
   })
   it('rejects garbage', () => {
-    expect(() => normalizeUrl('', 'https://lain42.top')).toThrow()
+    expect(() => normalizeUrl('', 'https://lain42.top/studio')).toThrow()
   })
 })
 
@@ -115,7 +115,7 @@ describe('SubscriptionClient', () => {
   it('fetches a subscription and reports active membership', async () => {
     setPlatform(makePlatform(() => ({ status: 200, body: JSON.stringify(doc) })))
     const c = new SubscriptionClient()
-    const d = await c.fetch('https://lain42.top/api/music/sub/tok12345')
+    const d = await c.fetch('https://lain42.top/studio/api/music/sub/tok12345')
     expect(d.sources).toHaveLength(3)
 
     const st = await c.status()
@@ -128,7 +128,7 @@ describe('SubscriptionClient', () => {
 
   it('persists to storage so membership survives a restart', async () => {
     setPlatform(makePlatform(() => ({ status: 200, body: JSON.stringify(doc) })))
-    await new SubscriptionClient().fetch('https://lain42.top/api/music/sub/tok12345')
+    await new SubscriptionClient().fetch('https://lain42.top/studio/api/music/sub/tok12345')
 
     // 模拟重启：新的 client 实例，无网络
     setPlatform(makePlatform(() => { throw new Error('offline') }))
@@ -143,7 +143,7 @@ describe('SubscriptionClient', () => {
       body: JSON.stringify({ ...doc, plan: { ...doc.plan, expires_at: past } }),
     })))
     const c = new SubscriptionClient()
-    await c.fetch('https://lain42.top/api/music/sub/tok12345')
+    await c.fetch('https://lain42.top/studio/api/music/sub/tok12345')
     const st = await c.status()
     expect(st.state).toBe('expired')
   })
@@ -151,27 +151,27 @@ describe('SubscriptionClient', () => {
   it('reports none after clearing', async () => {
     setPlatform(makePlatform(() => ({ status: 200, body: JSON.stringify(doc) })))
     const c = new SubscriptionClient()
-    await c.fetch('https://lain42.top/api/music/sub/tok12345')
+    await c.fetch('https://lain42.top/studio/api/music/sub/tok12345')
     await c.clear()
     expect((await c.status()).state).toBe('none')
   })
 
   it('surfaces a 404 as an expired/unknown link', async () => {
     setPlatform(makePlatform(() => ({ status: 404, body: '{"ok":false}' })))
-    await expect(new SubscriptionClient().fetch('https://lain42.top/api/music/sub/bad'))
+    await expect(new SubscriptionClient().fetch('https://lain42.top/studio/api/music/sub/bad'))
       .rejects.toThrow(/不存在或已过期/)
   })
 
   it('rejects a non-JSON body', async () => {
     setPlatform(makePlatform(() => ({ status: 200, body: '<html>502</html>' })))
-    await expect(new SubscriptionClient().fetch('https://lain42.top/api/music/sub/t'))
+    await expect(new SubscriptionClient().fetch('https://lain42.top/studio/api/music/sub/t'))
       .rejects.toThrow(/合法 JSON/)
   })
 
   it('applies only builtin sources by default, skipping remote scripts', async () => {
     setPlatform(makePlatform(() => ({ status: 200, body: JSON.stringify(doc) })))
     const c = new SubscriptionClient()
-    const d = await c.fetch('https://lain42.top/api/music/sub/tok12345')
+    const d = await c.fetch('https://lain42.top/studio/api/music/sub/tok12345')
     const applied = await c.apply(d)
     expect(applied).toEqual(['wy'])
     expect(applied).not.toContain('kw')
@@ -180,7 +180,7 @@ describe('SubscriptionClient', () => {
   it('applies script sources only when the user opts in', async () => {
     setPlatform(makePlatform(() => ({ status: 200, body: JSON.stringify(doc) })))
     const c = new SubscriptionClient({ allowRemoteScripts: true })
-    const d = await c.fetch('https://lain42.top/api/music/sub/tok12345')
+    const d = await c.fetch('https://lain42.top/studio/api/music/sub/tok12345')
     // script 类型仍需宿主加载器执行；此处只验证它不再被过滤
     expect(d.sources.some(s => s.type === 'script')).toBe(true)
   })
@@ -188,7 +188,7 @@ describe('SubscriptionClient', () => {
   it('accepts a bare token as the link', async () => {
     setPlatform(makePlatform(() => ({ status: 200, body: JSON.stringify(doc) })))
     await new SubscriptionClient().fetch('tok12345')
-    expect(requested[0]).toBe('https://lain42.top/api/music/sub/tok12345')
+    expect(requested[0]).toBe('https://lain42.top/studio/api/music/sub/tok12345')
   })
 
   it('honours a custom base URL', async () => {

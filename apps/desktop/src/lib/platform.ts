@@ -1,0 +1,99 @@
+/**
+ * 桌面端平台装配。
+ *
+ * 渲染进程没有 node:crypto / node:zlib（contextIsolation 且 nodeIntegration=false），
+ * 所以这里用 @lxmn/core 的**纯 JS 平台**：
+ *   - 加密：portableCrypto（MD5/SHA-1/AES/RSA 全手写，已与 node:crypto 逐字节比对通过）
+ *   - 网络：优先走 preload 暴露的 lxmnNative.request（主进程 net.fetch，绕过 CORS），
+ *           没有该桥时回落到标准 fetch
+ *   - 存储：localStorage
+ *
+ * 结论：渲染进程不需要任何 Node 能力，同一份内核在 Electron 里直接跑。
+ */
+import {
+  createPortablePlatform,
+  createFetchHttp,
+  createWebStorage,
+  setPlatform,
+  installWySource,
+  hasSource,
+  type HttpAdapter,
+  type HttpRequestOptions,
+  type HttpResponse,
+  type SourceId,
+} from '@lxmn/core'
+
+/** preload 注入的原生桥 */
+interface LxmnNative {
+  request?: (options: {
+    url: string
+    method?: string
+    headers?: Record<string, string>
+    body?: string
+    timeout?: number
+  }) => Promise<{ statusCode: number; headers: Record<string, string>; body: string }>
+}
+
+function nativeBridge(): LxmnNative | undefined {
+  return (globalThis as unknown as { lxmnNative?: LxmnNative }).lxmnNative
+}
+
+/** 优先主进程请求（无 CORS 限制），否则标准 fetch */
+function createDesktopHttp(): HttpAdapter {
+  const bridge = nativeBridge()
+  const fallback = createFetchHttp()
+
+  return {
+    async request(o: HttpRequestOptions): Promise<HttpResponse> {
+      if (bridge?.request) {
+        const body = o.form
+          ? Object.entries(o.form)
+              .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+              .join('&')
+          : typeof o.body === 'string'
+            ? o.body
+            : undefined
+        const headers = { ...o.headers }
+        if (o.form) headers['content-type'] = 'application/x-www-form-urlencoded'
+
+        const res = await bridge.request({
+          url: o.url,
+          method: o.method ?? 'GET',
+          headers,
+          body,
+          timeout: o.timeout,
+        })
+        const raw = new Uint8Array(0)
+        return { statusCode: res.statusCode, headers: res.headers, body: res.body, raw }
+      }
+      return fallback.request(o)
+    },
+  }
+}
+
+let done = false
+
+/** 内核里已经移植完成的音源 */
+const BUILTIN: { id: SourceId; install: () => void }[] = [
+  { id: 'wy', install: installWySource },
+]
+
+export function ensureDesktopPlatform(): void {
+  if (done) return
+
+  setPlatform(
+    createPortablePlatform({
+      name: 'web',
+      http: createDesktopHttp(),
+      storage: createWebStorage({ prefix: 'lxmn.' }),
+      version: '0.1.0',
+    }),
+  )
+
+  for (const s of BUILTIN) {
+    if (!hasSource(s.id)) s.install()
+  }
+  done = true
+}
+
+export { BUILTIN }

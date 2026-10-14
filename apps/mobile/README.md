@@ -1,6 +1,10 @@
 # LX Music · 移动端
 
-React Native 客户端，与桌面端共用同一套内核（`@lxmn/core`）。
+React Native 0.76 客户端，与桌面端共用同一套内核（`@lxmn/core`）。
+
+UI 全部用 RN 原生 `View` / `Text` / `StyleSheet` 手写，**不引入 NativeWind、
+reanimated、safe-area-context 等任何需要 babel 插件或原生代码的 UI 库**。
+原生依赖只有 `@react-native-async-storage/async-storage` 一个。
 
 ## 为什么不需要原生加密模块
 
@@ -53,7 +57,7 @@ LXMN_KEY_PASSWORD
 
 ## 会员与音源订阅
 
-1. 打开 <https://lain42.top/shop/>，用积分购买「音乐会员 · 年卡」（**88 元 / 年**）
+1. 打开 <https://lain42.top/studio/shop/>，用积分购买「音乐会员 · 年卡」（**88 元 / 年**）
 2. 在「我的账户」复制订阅链接
 3. 客户端「会员」页粘贴链接 → 激活
 4. 全部第三方音源自动补全，即可自由听歌

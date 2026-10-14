@@ -5,6 +5,8 @@ export * from './sign'
 export * from './util/bytes'
 export * from './crypto'
 export * from './portable-platform'
+export * from './http/fetch'
+export * from './storage/web'
 export * from './license'
 export * from './sources'
 

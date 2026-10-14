@@ -1,19 +1,83 @@
 /**
- * 字节工具 —— 纯 TypeScript 实现，不依赖 Node Buffer。
+ * 字节工具 —— 纯 TypeScript 实现，不依赖 Node Buffer，也不依赖 TextEncoder/TextDecoder。
  *
  * 原 lx-music 的 crypto.js 大量使用 Buffer.concat / Buffer.from(x, 'base64') /
- * .toString('hex')。为了让移植后的签名算法保持原样可读，这里提供等价原语，
- * 且因为是纯 JS，React Native 无需 polyfill 即可运行。
+ * .toString('hex')。为了让移植后的签名算法保持原样可读，这里提供等价原语。
+ *
+ * 刻意不使用 TextEncoder/TextDecoder：Hermes（React Native 的 JS 引擎）
+ * 默认没有这两个全局对象，用了就得在移动端额外装 polyfill。
  */
 
 const B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
+/** UTF-8 编码：与 TextEncoder 输出逐字节一致（含代理对 / 4 字节码点） */
 export function utf8Encode(s: string): Uint8Array {
-  return new TextEncoder().encode(s)
+  const out: number[] = []
+  for (let i = 0; i < s.length; i++) {
+    let cp = s.charCodeAt(i)
+    // 代理对：合成真实码点
+    if (cp >= 0xd800 && cp <= 0xdbff && i + 1 < s.length) {
+      const low = s.charCodeAt(i + 1)
+      if (low >= 0xdc00 && low <= 0xdfff) {
+        cp = ((cp - 0xd800) << 10) + (low - 0xdc00) + 0x10000
+        i++
+      }
+    }
+    if (cp < 0x80) {
+      out.push(cp)
+    } else if (cp < 0x800) {
+      out.push(0xc0 | (cp >> 6), 0x80 | (cp & 63))
+    } else if (cp < 0x10000) {
+      out.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63))
+    } else {
+      out.push(
+        0xf0 | (cp >> 18),
+        0x80 | ((cp >> 12) & 63),
+        0x80 | ((cp >> 6) & 63),
+        0x80 | (cp & 63),
+      )
+    }
+  }
+  return Uint8Array.from(out)
 }
 
+/** UTF-8 解码：与 TextDecoder 输出一致；非法字节按 U+FFFD 处理 */
 export function utf8Decode(b: Uint8Array): string {
-  return new TextDecoder().decode(b)
+  let out = ''
+  let i = 0
+  while (i < b.length) {
+    const c = b[i]!
+    if (c < 0x80) {
+      out += String.fromCharCode(c)
+      i++
+    } else if (c >= 0xc0 && c < 0xe0) {
+      const c1 = b[i + 1]
+      if (c1 === undefined || (c1 & 0xc0) !== 0x80) { out += '\uFFFD'; i++; continue }
+      out += String.fromCharCode(((c & 31) << 6) | (c1 & 63))
+      i += 2
+    } else if (c >= 0xe0 && c < 0xf0) {
+      const c1 = b[i + 1], c2 = b[i + 2]
+      if (c1 === undefined || c2 === undefined || (c1 & 0xc0) !== 0x80 || (c2 & 0xc0) !== 0x80) {
+        out += '\uFFFD'; i++; continue
+      }
+      out += String.fromCharCode(((c & 15) << 12) | ((c1 & 63) << 6) | (c2 & 63))
+      i += 3
+    } else if (c >= 0xf0) {
+      const c1 = b[i + 1], c2 = b[i + 2], c3 = b[i + 3]
+      if (c1 === undefined || c2 === undefined || c3 === undefined ||
+          (c1 & 0xc0) !== 0x80 || (c2 & 0xc0) !== 0x80 || (c3 & 0xc0) !== 0x80) {
+        out += '\uFFFD'; i++; continue
+      }
+      let cp = ((c & 7) << 18) | ((c1 & 63) << 12) | ((c2 & 63) << 6) | (c3 & 63)
+      cp -= 0x10000
+      out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 1023))
+      i += 4
+    } else {
+      out += '\uFFFD'
+      i++
+    }
+  }
+  return out
 }
 
 export function concat(arrays: Uint8Array[]): Uint8Array {

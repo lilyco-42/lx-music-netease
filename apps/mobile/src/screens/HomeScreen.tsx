@@ -3,9 +3,8 @@
  * 结构：顶栏（Logo + 标题）→ 推荐歌单横向卡片 → 猜你喜欢列表
  */
 import { ScrollView, Text, View, Pressable, FlatList } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { Logo } from '../components/Icons'
-import { colors } from '../theme'
+import { colors, topInset } from '../theme'
 
 interface Playlist {
   id: number
@@ -69,7 +68,7 @@ function CoverPlaceholder({ size, radius = 8 }: { size: number; radius?: number 
 
 export default function HomeScreen() {
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: topInset }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
         {/* 顶栏 */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 18 }}>
@@ -131,6 +130,6 @@ export default function HomeScreen() {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }

@@ -1,18 +1,17 @@
 /**
  * 会员页 —— 付费入口 + 订阅链接激活
  *
- * 购买流程：https://lain42.top/shop/ 用积分购买「音乐会员 · 年卡」（88 元/年）
+ * 购买流程：https://lain42.top/studio/shop/ 用积分购买「音乐会员 · 年卡」（88 元/年）
  *          -> 我的账户复制订阅链接 -> 在此粘贴激活 -> 自动补全全部第三方音源
  */
 import { useState } from 'react'
 import {
   ActivityIndicator, Linking, Pressable, ScrollView, Text, TextInput, View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { ANNUAL_PRICE_CNY, SHOP_URL } from '@lxmn/core'
 import type { MembershipStatus } from '@lxmn/core'
 import { activate, status as fetchStatus, deactivate } from '../license'
-import { colors } from '../theme'
+import { colors, topInset } from '../theme'
 
 const FEATURES = [
   '一键补全全部第三方音源',
@@ -74,7 +73,7 @@ export default function MembershipScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: topInset }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
         <Text style={{ color: colors.fg, fontSize: 24, fontWeight: '700', marginBottom: 6 }}>音乐会员</Text>
         <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 22 }}>
@@ -220,6 +219,6 @@ export default function MembershipScreen() {
           </View>
         ) : null}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }

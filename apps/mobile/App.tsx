@@ -5,15 +5,13 @@
  * 启动时装配平台适配器（纯 JS 加密，无原生加密模块）。
  */
 import { useEffect, useState } from 'react'
-import { Pressable, StatusBar, Text, View } from 'react-native'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
-import './global.css'
+import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 import HomeScreen from './src/screens/HomeScreen'
 import PlayerScreen from './src/screens/PlayerScreen'
 import MembershipScreen from './src/screens/MembershipScreen'
 import { ensurePlatform } from './src/platform'
-import { colors } from './src/theme'
+import { colors, TAB_BAR_HEIGHT, topInset } from './src/theme'
 
 type TabKey = 'home' | 'player' | 'member'
 
@@ -32,48 +30,41 @@ export default function App() {
   }, [])
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-      <View style={{ flex: 1, backgroundColor: colors.bg }}>
-        <View style={{ flex: 1 }}>
-          {tab === 'home' ? <HomeScreen /> : tab === 'player' ? <PlayerScreen /> : <MembershipScreen />}
-        </View>
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.bg} translucent={false} />
 
-        {/* 底部标签栏 */}
-        <View
-          style={{
-            flexDirection: 'row',
-            backgroundColor: colors.bottombar,
-            borderTopWidth: 1,
-            borderTopColor: colors.divider,
-            paddingBottom: 6,
-          }}
-        >
-          {TABS.map(t => {
-            const active = t.key === tab
-            return (
-              <Pressable
-                key={t.key}
-                onPress={() => setTab(t.key)}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 12 }}
-              >
-                <View
-                  style={{
-                    width: 22,
-                    height: 3,
-                    borderRadius: 2,
-                    backgroundColor: active ? colors.accent : 'transparent',
-                    marginBottom: 7,
-                  }}
-                />
-                <Text style={{ color: active ? colors.accent : colors.muted, fontSize: 13, fontWeight: active ? '600' : '400' }}>
-                  {t.label}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </View>
+      <View style={styles.body}>
+        {tab === 'home' ? <HomeScreen /> : tab === 'player' ? <PlayerScreen /> : <MembershipScreen />}
       </View>
-    </SafeAreaProvider>
+
+      <View style={styles.tabBar}>
+        {TABS.map(t => {
+          const active = t.key === tab
+          return (
+            <TouchableOpacity key={t.key} style={styles.tabItem} onPress={() => setTab(t.key)} activeOpacity={0.7}>
+              <View style={[styles.tabIndicator, { backgroundColor: active ? colors.accent : 'transparent' }]} />
+              <Text style={[styles.tabLabel, { color: active ? colors.accent : colors.muted, fontWeight: active ? '600' : '400' }]}>
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+    </View>
   )
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  body: { flex: 1 },
+  tabBar: {
+    flexDirection: 'row',
+    height: TAB_BAR_HEIGHT,
+    backgroundColor: colors.bottombar,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.divider,
+  },
+  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  tabIndicator: { width: 22, height: 3, borderRadius: 2, marginBottom: 6 },
+  tabLabel: { fontSize: 13 },
+})

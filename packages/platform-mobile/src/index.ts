@@ -14,6 +14,7 @@
 import {
   setPlatform,
   createPortablePlatform,
+  utf8Decode,
   type PlatformAdapter,
   type HttpRequestOptions,
   type HttpResponse,
@@ -28,10 +29,6 @@ export interface RnBackgroundTimer {
   clearInterval(id: number): void
 }
 
-function utf8Decode(b: Uint8Array): string {
-  return new TextDecoder().decode(b)
-}
-
 /** 把 lx-music-mobile 的 request 语义映射到 RN fetch */
 export function createRnHttp(fetchImpl: typeof fetch = fetch) {
   return {
@@ -43,7 +40,7 @@ export function createRnHttp(fetchImpl: typeof fetch = fetch) {
 
       try {
         const headers: Record<string, string> = { ...options.headers }
-        let body: BodyInit | undefined
+        let body: string | undefined
 
         if (options.form) {
           headers['content-type'] = 'application/x-www-form-urlencoded'
@@ -51,7 +48,7 @@ export function createRnHttp(fetchImpl: typeof fetch = fetch) {
             .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
             .join('&')
         } else if (options.body) {
-          body = options.body as BodyInit
+          body = typeof options.body === 'string' ? options.body : utf8Decode(options.body)
         }
 
         const res = await fetchImpl(options.url, {

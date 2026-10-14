@@ -132,17 +132,10 @@ jobs:
         working-directory: apps/mobile
         shell: bash
         run: |
-          mkdir -p android/app/src/main/assets
-          # 关闭新架构：避免 CI 上额外拉取 NDK/CMake，构建更稳
-          if [ -f android/gradle.properties ]; then
-            grep -q '^newArchEnabled=' android/gradle.properties \
-              && sed -i 's/^newArchEnabled=.*/newArchEnabled=false/' android/gradle.properties \
-              || echo 'newArchEnabled=false' >> android/gradle.properties
-            grep -q '^android.useAndroidX=' android/gradle.properties \
-              || echo 'android.useAndroidX=true' >> android/gradle.properties
-            echo 'org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m' >> android/gradle.properties
-          fi
+          # 仓库里 gradle.properties 已经设好 newArchEnabled=false 与 arm64/armeabi-v7a，
+          # 这里只做两件必须的事：赋予 gradlew 执行位、打印生效配置便于排查。
           chmod +x android/gradlew
+          grep -E '^(newArchEnabled|reactNativeArchitectures|org.gradle.jvmargs)' android/gradle.properties || true
       - name: Build release APK
         working-directory: apps/mobile/android
         env:

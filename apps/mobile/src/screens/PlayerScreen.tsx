@@ -5,12 +5,11 @@
  */
 import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   ChevronDownIcon, MoreIcon, HeartIcon, CommentIcon, ShareIcon, ListIcon,
   LoopIcon, ShuffleIcon, SkipIcon, PlayIcon, PauseIcon,
 } from '../components/Icons'
-import { colors } from '../theme'
+import { colors, topInset } from '../theme'
 
 const LYRICS = [
   { t: 0, text: '夜色把城市轻轻盖住' },
@@ -25,7 +24,7 @@ export default function PlayerScreen() {
   const progress = 0.36
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: topInset }}>
       {/* 顶栏 */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 }}>
         <Pressable hitSlop={12}>
@@ -169,6 +168,6 @@ export default function PlayerScreen() {
         <Pressable hitSlop={10}><ShareIcon size={22} /></Pressable>
         <Pressable hitSlop={10}><ListIcon size={22} /></Pressable>
       </View>
-    </SafeAreaView>
+    </View>
   )
 }
