@@ -8,12 +8,39 @@
  * 把「能力」声明成接口，两端各提供一份实现，业务逻辑即可真正一份代码。
  */
 
-/** 加解密能力：桌面用 node:crypto，移动端用 nativeModules/crypto */
+/**
+ * 加解密能力。
+ *
+ * 刻意暴露「原语」而不是「业务函数」：lx-music 的音源签名算法
+ * （如网易 eapi 的 AES-128-ECB、weapi 的 RSA 无填充）在两端完全一致，
+ * 差异只在 createCipheriv/publicEncrypt 的调用方式上。
+ * 把原语抽出来，签名算法本身就能 100% 共用。
+ */
 export interface CryptoAdapter {
-  aesEncryptSync(data: string | Uint8Array, key: string | Uint8Array, iv?: string | Uint8Array): string
-  aesDecryptSync(data: string, key: string | Uint8Array, iv?: string | Uint8Array): string
+  /** 原始 AES 分组加密，支持 CBC / ECB，返回原始字节（不自动 base64/hex） */
+  aesEncrypt(
+    data: Uint8Array,
+    mode: 'aes-128-cbc' | 'aes-128-ecb',
+    key: Uint8Array,
+    iv?: Uint8Array,
+  ): Uint8Array
+
+  /** 原始 AES 分组解密 */
+  aesDecrypt(
+    data: Uint8Array,
+    mode: 'aes-128-cbc' | 'aes-128-ecb',
+    key: Uint8Array,
+    iv?: Uint8Array,
+  ): Uint8Array
+
+  /** RSA 公钥加密；网易 weapi 需要 RSA_NO_PADDING */
+  rsaEncrypt(data: Uint8Array, publicKey: string, padding?: 'none' | 'pkcs1'): Uint8Array
+
+  /** 密码学安全随机字节（weapi 的 secretKey 用） */
+  randomBytes(size: number): Uint8Array
+
+  /** MD5 十六进制摘要 */
   md5(data: string | Uint8Array): string
-  rsaEncrypt?(data: string, key: string): string
 }
 
 /** 压缩能力：桌面用 node:zlib，移动端用 pako */
@@ -32,11 +59,17 @@ export interface HttpRequestOptions {
   url: string
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD'
   headers?: Record<string, string>
+  /** 表单（application/x-www-form-urlencoded） */
+  form?: Record<string, string>
   body?: string | Uint8Array
   timeout?: number
   binary?: boolean
   rejectUnauthorized?: boolean
-  lookup?: (hostname: string, options: unknown, cb: (err: Error | null, address?: string, family?: number) => void) => void
+  lookup?: (
+    hostname: string,
+    options: unknown,
+    cb: (err: Error | null, address?: string, family?: number) => void,
+  ) => void
   follow_max?: number
 }
 
@@ -71,6 +104,7 @@ export interface CodecAdapter {
   utf8Decode(b: Uint8Array): string
   base64Encode(b: Uint8Array | string): string
   base64Decode(s: string): Uint8Array
+  /** 处理 lx-music 的 HTML 实体 / 名称转义 */
   decodeName(s: string | Uint8Array): string
 }
 

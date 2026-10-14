@@ -22,11 +22,11 @@ LX Music 的**网易云音乐风格 UI 重制版**，并把桌面端与移动端
 
 ```
 packages/
-  core/               平台无关内核：音乐源协议、统一数据模型、签名工具
+  core/               平台无关内核：PlatformAdapter、统一数据模型、签名算法、音源注册表
   platform-desktop/   桌面端实现：node:crypto / node:zlib / fetch
   tokens/             设计令牌：实测色值、布局、圆角、字号 + Tailwind preset
 apps/
-  desktop/            (计划) Vue3 + Electron + shadcn-vue
+  desktop/            Vue3 + Vite + Tailwind v4 + shadcn-vue（已实现）
   mobile/             (计划) React Native + react-native-reusables
 ```
 
@@ -38,20 +38,49 @@ import { getPlatform } from '@lxmn/core'
 const { crypto, compress, http } = getPlatform()
 ```
 
+### 关键设计：暴露「原语」而非「业务函数」
+
+`CryptoAdapter` 刻意提供 `aesEncrypt(data, mode, key, iv)` / `rsaEncrypt` / `randomBytes` 这类**原始能力**，而不是 `weapi()` 这类业务函数。原因：两端签名算法完全一致，差异只在 `createCipheriv` / `publicEncrypt` 的调用方式上。把原语抽出来，网易云的 eapi / weapi / linuxapi 签名算法就能 **100% 共用同一份代码**。
+
+## 已移植的音源
+
+### 网易云音乐（`wy`）
+
+对应 lx-music-desktop 的 `musicSdk/wy/`，算法逐行移植且**输出字节与上游一致**（有测试为证）：
+
+| 能力 | 状态 |
+|---|---|
+| `weapi`（AES-128-CBC 双层 + RSA 无填充） | ✅ |
+| `linuxapi`（AES-128-ECB） | ✅ |
+| `eapi`（AES-128-ECB + md5 校验段） | ✅ |
+| `eapiDecrypt` | ✅ |
+| `getMusicUrl` / `getLyric` / `getPic` | ✅ |
+
+**保留了 lx-music 的自定义音源能力**：`setMusicUrlProvider()` 允许宿主注入自己的取地址实现，原 `apis('wy')` 的间接层被换成显式注入。
+
+## 测试
+
+```
+Test Files  2 passed (2)
+     Tests  24 passed (24)
+```
+
+其中 `tests/wy-crypto.test.ts` 用**独立的逐字转写参考实现**（直接走 `node:crypto` + `Buffer`，不经 PlatformAdapter）比对，证明移植后的 `eapi` / `linuxapi` 输出与上游字节完全相同。
+
 ## 构建
 
 **不在本机编译**——所有构建走 GitHub Actions：
 
-- [`ci.yml`](./.github/workflows/ci.yml) — 类型检查 + 构建 packages
+- [`ci.yml`](./.github/workflows/ci.yml) — packages 构建/类型检查/测试 + 桌面端构建
 - [`tokens.yml`](./.github/workflows/tokens.yml) — 设计令牌校验
 
-本机只做代码编写与提交，产物从 Actions artifacts 下载。
+本机只做代码编写与提交，产物从 Actions artifacts 下载（`lxmn-packages`、`lxmn-desktop-dist`）。
 
 ## 技术选型
 
 | 层 | 选型 | 理由 |
 |---|---|---|
-| 桌面 UI | Vue 3 + **shadcn-vue** + Tailwind | 与 lx-music-desktop 同为 Vue3；shadcn-vue 是 MIT，复制粘贴式组件，便于改造成网易云风格 |
+| 桌面 UI | Vue 3 + **shadcn-vue** + Tailwind v4 | 与 lx-music-desktop 同为 Vue3；shadcn-vue 是 MIT，复制粘贴式组件，便于改造成网易云风格 |
 | 移动 UI | React Native + **react-native-reusables** | shadcn 的 RN 移植，MIT |
 | 参考蓝本 | [YesPlayMusic](https://github.com/qier222/YesPlayMusic) (MIT, 33.4k★) | UI 最接近网易云，许可证宽松，同为 Electron |
 
