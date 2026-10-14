@@ -2,7 +2,7 @@
   "name": "@lxmn/app-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "网易云风格桌面端 UI (Vue3 + Vite + Tailwind v4)",
+  "description": "网易云风格桌面端 UI (Vue3 + Vite + Tailwind v4 + shadcn-vue)",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,11 @@
   "dependencies": {
     "@lxmn/core": "workspace:*",
     "@lxmn/tokens": "workspace:*",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-vue-next": "^0.469.0",
+    "reka-ui": "^2.5.0",
+    "tailwind-merge": "^2.6.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },

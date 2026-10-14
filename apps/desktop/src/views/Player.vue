@@ -9,9 +9,11 @@
  * 无垂直分割线，靠亮度差与留白分区
  */
 import { ref, computed } from 'vue'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 
 const spinning = ref(true)
-const activeTab = ref<'lyric' | 'wiki' | 'similar'>('lyric')
+const activeTab = ref('lyric')
 
 const tabs = [
   { key: 'lyric', label: '歌词' },
@@ -134,25 +136,16 @@ const vinylStyle = computed(() => ({
           专辑：HOT&nbsp;&nbsp;歌手：TAEYANG&nbsp;&nbsp;来源：每日推荐
         </p>
 
-        <!-- 页签切换器：222x42，圆角 21px，位于 (1005,265) -->
-        <div class="mt-[57px] inline-flex h-[42px] w-[222px] items-center rounded-tab bg-ncmd-surface p-0.5">
-          <button
-            v-for="t in tabs"
-            :key="t.key"
-            type="button"
-            class="h-full flex-1 rounded-tab text-[15px] transition-colors"
-            :class="activeTab === t.key
-              ? 'bg-ncmd-elevated font-semibold text-ncmd-fg'
-              : 'text-ncmd-muted hover:text-ncmd-fg'"
-            @click="activeTab = t.key"
-          >
-            {{ t.label }}
-          </button>
-        </div>
+        <!-- 页签切换器（shadcn-vue Tabs）：222x42，圆角 21px，位于 (1005,265) -->
+        <Tabs v-model="activeTab" class="mt-[57px]">
+          <TabsList>
+            <TabsTrigger v-for="t in tabs" :key="t.key" :value="t.key">
+              {{ t.label }}
+            </TabsTrigger>
+          </TabsList>
 
-        <!-- 歌词区：与页签间留约 260px 空白，起始 y=573 -->
-        <div class="mt-[260px] max-w-[600px] flex-1 overflow-y-auto pb-8">
-          <template v-if="activeTab === 'lyric'">
+          <!-- 歌词区：与页签间留约 260px 空白，起始 y=573 -->
+          <TabsContent value="lyric" class="mt-[260px] max-w-[600px] flex-1 overflow-y-auto pb-8">
             <div
               v-for="(line, i) in lyrics"
               :key="i"
@@ -174,11 +167,15 @@ const vinylStyle = computed(() => ({
                 {{ line.zh }}
               </p>
             </div>
-          </template>
-          <p v-else class="text-[24px] leading-[32px] text-ncmd-dim">
-            {{ activeTab === 'wiki' ? '百科内容' : '相似推荐' }}
-          </p>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="wiki" class="mt-[260px] text-[24px] leading-[32px] text-ncmd-dim">
+            百科内容
+          </TabsContent>
+          <TabsContent value="similar" class="mt-[260px] text-[24px] leading-[32px] text-ncmd-dim">
+            相似推荐
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
 
@@ -209,15 +206,15 @@ const vinylStyle = computed(() => ({
         <button type="button" class="text-ncmd-fg/80 hover:text-ncmd-fg" aria-label="上一首">
           <svg viewBox="0 0 24 24" class="size-[26px] fill-current"><path d="M6 5h2v14H6zM20 5v14L9 12z" /></svg>
         </button>
-        <!-- 播放按钮 52x52 圆形 -->
-        <button
-          type="button"
-          class="flex size-[52px] items-center justify-center rounded-full bg-ncmd-surface text-white"
+        <!-- 播放按钮（shadcn-vue Button）52x52 圆形 -->
+        <Button
+          variant="secondary"
+          class="size-[52px] rounded-full bg-ncmd-surface p-0 text-white hover:bg-ncmd-elevated"
           @click="spinning = !spinning"
         >
           <svg v-if="spinning" viewBox="0 0 24 24" class="size-6 fill-current"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
           <svg v-else viewBox="0 0 24 24" class="size-6 fill-current"><path d="M8 5v14l11-7z" /></svg>
-        </button>
+        </Button>
         <button type="button" class="text-ncmd-fg/80 hover:text-ncmd-fg" aria-label="下一首">
           <svg viewBox="0 0 24 24" class="size-[26px] fill-current"><path d="M16 5h2v14h-2zM4 5v14l11-7z" /></svg>
         </button>

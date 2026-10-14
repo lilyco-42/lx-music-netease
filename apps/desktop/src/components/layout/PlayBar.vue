@@ -7,6 +7,7 @@
  */
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { Button } from '@/components/ui/button'
 
 const router = useRouter()
 const playing = ref(true)
@@ -65,16 +66,16 @@ const progressStyle = computed(() => ({ width: `${progress.value}%` }))
         <svg viewBox="0 0 24 24" class="size-[26px] fill-current"><path d="M6 5h2v14H6zM20 5v14L9 12z" /></svg>
       </button>
 
-      <!-- 播放/暂停：52x52 圆形，白色三角 -->
-      <button
-        type="button"
-        class="flex size-[52px] items-center justify-center rounded-full bg-ncm-accent-play text-white transition-transform hover:scale-105"
+      <!-- 播放/暂停（shadcn-vue Button）：52x52 圆形 -->
+      <Button
+        variant="default"
+        class="size-[52px] rounded-full p-0 transition-transform hover:scale-105"
         :aria-label="playing ? '暂停' : '播放'"
         @click="playing = !playing"
       >
         <svg v-if="playing" viewBox="0 0 24 24" class="size-6 fill-current"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
         <svg v-else viewBox="0 0 24 24" class="size-6 fill-current"><path d="M8 5v14l11-7z" /></svg>
-      </button>
+      </Button>
 
       <!-- 下一首 -->
       <button type="button" class="text-ncm-fg/80 hover:text-ncm-fg" aria-label="下一首">
