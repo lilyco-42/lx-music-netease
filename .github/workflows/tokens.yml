@@ -1,0 +1,32 @@
+name: Design tokens sanity
+
+on:
+  push:
+    paths:
+      - 'packages/tokens/**'
+      - 'DESIGN.md'
+  workflow_dispatch:
+
+jobs:
+  tokens:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile=false
+      - name: Build tokens
+        run: pnpm --filter @lxmn/tokens build
+      - name: Verify token export shape
+        run: |
+          node -e "
+            const t = require('./packages/tokens/dist/index.js');
+            const need = ['dark','light','layout','radius','fontSize','fontFamily'];
+            for (const k of need) if (!t[k]) { console.error('missing token group:', k); process.exit(1); }
+            console.log('tokens OK:', Object.keys(t.tokens).join(','));
+          "

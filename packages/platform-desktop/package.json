@@ -1,0 +1,25 @@
+{
+  "name": "@lxmn/platform-desktop",
+  "version": "0.1.0",
+  "description": "lxmn/core 的桌面端 (Electron/Node) 平台适配器",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@lxmn/core": "workspace:*"
+  },
+  "license": "Apache-2.0"
+}

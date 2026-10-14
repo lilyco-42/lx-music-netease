@@ -1,0 +1,22 @@
+{
+  "name": "@lxmn/core",
+  "version": "0.1.0",
+  "description": "平台无关的音乐源适配内核 — 桌面端与移动端共享",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "license": "Apache-2.0"
+}
