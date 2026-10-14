@@ -15,10 +15,31 @@ export function encodeForm(form: Record<string, string>): string {
 }
 
 export interface FetchHttpOptions {
-  /** 自定义 fetch（测试 / 代理） */
-  fetchImpl?: typeof fetch
+  /**
+   * 自定义 fetch（测试 / 代理）。
+   *
+   * 不写成 `typeof fetch`：移动端 tsconfig 没有 DOM lib，
+   * 全局 fetch 类型不存在，会导致本文件在移动端编译失败。
+   */
+  fetchImpl?: FetchLike
   /** 默认超时毫秒 */
   timeout?: number
+}
+
+/** fetch 的最小结构（等价于 DOM 的 fetch，但不需要 DOM lib） */
+export type FetchLike = (input: string, init?: FetchInitLike) => Promise<FetchResponseLike>
+
+export interface FetchInitLike {
+  method?: string
+  headers?: Record<string, string>
+  body?: string
+  signal?: unknown
+}
+
+export interface FetchResponseLike {
+  status: number
+  headers: { forEach(cb: (value: string, key: string) => void): void }
+  arrayBuffer(): Promise<ArrayBuffer>
 }
 
 /**
@@ -27,7 +48,8 @@ export interface FetchHttpOptions {
  * 见 apps/desktop/src/lib/platform.ts。这个 fetch 版本用于浏览器 / 测试 / RN。
  */
 export function createFetchHttp(options: FetchHttpOptions = {}): HttpAdapter {
-  const doFetch = options.fetchImpl ?? globalThis.fetch
+  const doFetch: FetchLike | undefined = options.fetchImpl ??
+    (globalThis as unknown as { fetch?: FetchLike }).fetch
   if (typeof doFetch !== 'function') {
     throw new Error('[lxmn/http] 当前环境没有 fetch，请注入 fetchImpl')
   }
@@ -35,7 +57,8 @@ export function createFetchHttp(options: FetchHttpOptions = {}): HttpAdapter {
 
   return {
     async request(o: HttpRequestOptions): Promise<HttpResponse> {
-      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+      const AbortCtor = (globalThis as unknown as { AbortController?: new () => { signal: unknown; abort(): void } }).AbortController
+      const controller = AbortCtor ? new AbortCtor() : null
       const timer = controller ? setTimeout(() => controller.abort(), o.timeout ?? defaultTimeout) : null
 
       try {
@@ -58,7 +81,7 @@ export function createFetchHttp(options: FetchHttpOptions = {}): HttpAdapter {
 
         const buf = new Uint8Array(await res.arrayBuffer())
         const resHeaders: Record<string, string> = {}
-        res.headers.forEach((v, k) => {
+        res.headers.forEach((v: string, k: string) => {
           resHeaders[k] = v
         })
 
