@@ -1,7 +1,7 @@
 /**
  * 会员与音源订阅的数据模型
  *
- * 商业模式：用户在 https://lain42.top/studio/shop/ 用积分购买「音乐会员」，
+ * 商业模式：用户在 https://lain42.top/shop/ 用积分购买「音乐会员」，
  * 得到一条订阅链接；把链接填进客户端，即可自动补全所有第三方音源。
  *
  * 这里只描述数据结构，不含任何业务实现 —— 桌面端 / 移动端 / 未来的
@@ -64,8 +64,11 @@ export interface SubscriptionClientOptions {
   /**
    * 服务端根地址，默认 https://lain42.top/studio
    *
-   * 注意不是裸域名：pingap 只把 `/studio/api/*` 反代到 billing 服务，
-   * 裸域名下的 /api/* 会命中前端 SPA（返回 HTML）。详见 client.ts 的 DEFAULT_BASE。
+   * 注意只有 **API** 在 /studio 前缀下：pingap 只把 `/studio/api/*` 反代到
+   * billing 服务，裸域名的 /api/* 会命中前端 SPA（返回 HTML）。
+   * 静态站点（/shop/、/account/、/downloads/）仍在域名根目录，
+   * 所以 SHOP_URL 是 https://lain42.top/shop/，不带 /studio。
+   * 详见 client.ts 的 DEFAULT_BASE。
    */
   baseUrl?: string
   /** 本地缓存键名 */
@@ -77,6 +80,6 @@ export interface SubscriptionClientOptions {
 }
 
 /** 购买入口（用于「一键购买会员」按钮） */
-export const SHOP_URL = 'https://lain42.top/studio/shop/'
+export const SHOP_URL = 'https://lain42.top/shop/'
 /** 会员价格展示 */
 export const ANNUAL_PRICE_CNY = 88
