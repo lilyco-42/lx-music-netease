@@ -31,9 +31,10 @@
     "vite": "^6.3.5",
     "vue-tsc": "^2.2.10",
     "cross-env": "^7.0.3",
-    "electron": "^33.4.11",
+    "electron": "33.4.11",
     "electron-builder": "^25.1.8"
   },
+  "author": "lain42 <lilyco42@lain42.top>",
   "license": "Apache-2.0",
   "main": "electron/main.cjs"
 }

@@ -123,7 +123,15 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      # 不用 android-actions/setup-android：它内部的 sdkmanager 在 runner 的
+      # Node 24 下会以 'Failed to find package tools' 退出。ubuntu runner 已预装
+      # Android SDK（ANDROID_HOME=/usr/local/lib/android/sdk），直接用即可。
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=${{ env.ANDROID_HOME || '/usr/local/lib/android/sdk' }}" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=${{ env.ANDROID_HOME || '/usr/local/lib/android/sdk' }}" >> $GITHUB_ENV
+          ls ${{ env.ANDROID_HOME || '/usr/local/lib/android/sdk' }}/platforms || true
+          ls ${{ env.ANDROID_HOME || '/usr/local/lib/android/sdk' }}/build-tools || true
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
       - name: Build workspace packages
@@ -226,6 +234,31 @@ jobs:
           mkdir -p release-files
           find dist-all -type f -exec cp -n {} release-files/ \;
           ls -la release-files || true
+      # 同步到 lain42.top 的软件下载目录，并生成 SHA256SUMS
+      # 未配置 LAIN42_SSH_KEY 时自动跳过，不影响 GitHub Release
+      - name: Publish to lain42.top downloads
+        if: ${{ secrets.LAIN42_SSH_KEY != '' }}
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.LAIN42_SSH_KEY }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_lain42
+          chmod 600 ~/.ssh/id_lain42
+          ssh-keyscan -H lain42.top >> ~/.ssh/known_hosts 2>/dev/null || true
+          STAGE="lx-music-netease/${{ steps.tag.outputs.name }}"
+          ssh -i ~/.ssh/id_lain42 root@lain42.top "mkdir -p /var/www/studio/downloads/$STAGE"
+          for f in release-files/*; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              *.exe|*.msi|*.dmg|*.apk|*.ipa|*.AppImage|*.zip|*.blockmap|*.yml)
+                scp -i ~/.ssh/id_lain42 "$f" "root@lain42.top:/var/www/studio/downloads/$STAGE/" ;;
+            esac
+          done
+          ssh -i ~/.ssh/id_lain42 root@lain42.top \
+            "cd /var/www/studio/downloads/$STAGE && sha256sum * > SHA256SUMS.txt && ls -la"
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
@@ -249,7 +282,7 @@ jobs:
             | Linux | `*.AppImage` | chmod +x 后直接运行 |
 
             ### 会员与音源订阅
-            1. 打开 https://lain42.top/shop/ 用积分购买「音乐会员 · 年卡」（¥88/年）
+            1. 打开 https://lain42.top/studio/shop/ 用积分购买「音乐会员 · 年卡」（¥88/年）
             2. 在「我的账户」复制订阅链接
             3. 在客户端「会员」页粘贴链接并激活，即可一键补全全部第三方音源
 

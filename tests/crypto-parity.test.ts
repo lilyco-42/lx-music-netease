@@ -114,22 +114,49 @@ describe('pure-JS RSA matches node:crypto', () => {
   })
 
   it('PKCS#1 v1.5 output is decryptable by node privateDecrypt', () => {
-    // PKCS#1 填充含随机字节，无法逐字节比对；
-    // 改为用 node 生成的密钥对，验证 node 能解出我加密的内容。
+    // PKCS#1 填充含随机字节，无法逐字节比对；改为用 node 生成的密钥对做私钥还原。
+    //
+    // 注意：Node >= 20.11 / 22 出于 CVE-2023-46809 已禁用
+    // privateDecrypt(RSA_PKCS1_PADDING)，所以这里用 NO_PADDING 取出原始分组，
+    // 再自行校验 PKCS#1 v1.5 的结构。这比依赖 OpenSSL 的填充检查更严格，
+    // 而且不会随 Node 版本失效。
     const { publicKey, privateKey } = generateKeyPairSync('rsa', {
       modulusLength: 1024,
       publicKeyEncoding: { type: 'spki', format: 'pem' },
       privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
     })
 
+    const raw = (buf: Uint8Array) => new Uint8Array(
+      privateDecrypt({ key: privateKey, padding: constants.RSA_NO_PADDING }, Buffer.from(buf)),
+    )
+
+    /** 校验 EMSA-PKCS1-v1_5 结构并取出消息 */
+    const unwrap = (block: Uint8Array, size: number): Uint8Array => {
+      expect(block.length).toBe(size)
+      expect(block[0]).toBe(0x00)
+      expect(block[1]).toBe(0x02)
+      let i = 2
+      // 填充串：至少 8 字节非零，以 0x00 结束
+      while (i < block.length && block[i] !== 0) {
+        expect(block[i]).not.toBe(0)
+        i++
+      }
+      expect(i - 2).toBeGreaterThanOrEqual(8)
+      expect(i).toBeLessThan(block.length)
+      return block.slice(i + 1)
+    }
+
     const data = utf8Encode('lx-music netease')
     const mine = portableCrypto.rsaEncrypt(data, publicKey, 'pkcs1')
+    expect(mine.length).toBe(128)
+    expect(Buffer.from(unwrap(raw(mine), 128)).toString('utf8')).toBe('lx-music netease')
 
-    const recovered = privateDecrypt(
-      { key: privateKey, padding: constants.RSA_PKCS1_PADDING },
-      Buffer.from(mine),
-    )
-    expect(recovered.toString('utf8')).toBe('lx-music netease')
+    // 交叉验证：node 自己加密的结果，结构必须与我的一致
+    const ref = new Uint8Array(publicEncrypt(
+      { key: publicKey, padding: constants.RSA_PKCS1_PADDING },
+      Buffer.from(data),
+    ))
+    expect(Buffer.from(unwrap(raw(ref), 128)).toString('utf8')).toBe('lx-music netease')
   })
 
   it('NO_PADDING output is decryptable by node privateDecrypt', () => {

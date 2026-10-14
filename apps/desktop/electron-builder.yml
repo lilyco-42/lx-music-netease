@@ -2,6 +2,12 @@ appId: top.lain42.lxmusic
 productName: LX Music
 copyright: Copyright © 2026 lain42
 
+# 必须显式指定：本仓库用 node-linker=hoisted，electron 被提升到仓库根的
+# node_modules，electron-builder 从 apps/desktop 向上探测不到，会报
+# "Cannot compute electron version from installed node modules"。
+# 指定后 electron-builder 直接按版本下载官方发行包。
+electronVersion: 33.4.11
+
 directories:
   output: release
   buildResources: build
