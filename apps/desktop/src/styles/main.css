@@ -1,0 +1,84 @@
+@import 'tailwindcss';
+
+/*
+ * 设计令牌 —— 数值全部来自对参考截图的像素级实测 (见仓库根 DESIGN.md)
+ * 这里把 @lxmn/tokens 的值展开为 Tailwind v4 的 @theme 变量，
+ * 使 bg-ncm-bg / text-ncm-fg 这类工具类可用。
+ */
+@theme {
+  /* ---- 浅色主题（首页推荐） ---- */
+  --color-ncm-bg: #f4f6fb;
+  --color-ncm-sidebar: #eef1f6;
+  --color-ncm-topbar: #f3f4f8;
+  --color-ncm-bottombar: #fbfcfe;
+  --color-ncm-divider: #e9ecf2;
+  --color-ncm-fg: #252d42;
+  --color-ncm-muted: #465066;
+  --color-ncm-faint: #747d90;
+  --color-ncm-fainter: #a5acba;
+  --color-ncm-accent: #d43b52;
+  --color-ncm-accent-nav: #d13b50;
+  --color-ncm-accent-play: #d83a50;
+  --color-ncm-progress: #de7085;
+  --color-ncm-scrollbar: #dadce2;
+
+  /* ---- 深色主题（播放器模式） ---- */
+  --color-ncmd-bg: #101010;
+  --color-ncmd-surface: #202020;
+  --color-ncmd-elevated: #303030;
+  --color-ncmd-bottombar: #1d1d1d;
+  --color-ncmd-topbar: #282828;
+  --color-ncmd-sidebar: #1e1e1e;
+  --color-ncmd-main: #232323;
+  --color-ncmd-fg: #eeeeee;
+  --color-ncmd-muted: #969696;
+  --color-ncmd-dim: #555555;
+  --color-ncmd-darker: #383838;
+  --color-ncmd-accent: #e83a45;
+  --color-ncmd-vinyl: #0b0b0b;
+  --color-ncmd-vinyl-edge: #303030;
+  --color-ncmd-vinyl-ring: #f7f7f7;
+
+  /* ---- 布局（实测 1920x1200 基准） ---- */
+  --spacing-sidebar: 255px;
+  --spacing-topbar: 94px;
+  --spacing-bottombar: 102px;
+
+  /* ---- 圆角（实测） ---- */
+  --radius-nav: 10px;
+  --radius-search: 11px;
+  --radius-channel: 8px;
+  --radius-cover: 7px;
+  --radius-banner: 12px;
+  --radius-tab: 21px;
+  --radius-pill: 24px;
+
+  --font-sans: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', Arial, sans-serif;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-ncm-fg);
+  background: var(--color-ncm-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 实测：滚动条宽 6px，滑块 #DADCE2，圆角 3px */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ncm-scrollbar);
+  border-radius: 3px;
+}
