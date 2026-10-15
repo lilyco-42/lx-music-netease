@@ -283,6 +283,11 @@ jobs:
           ssh -i ~/.ssh/id_lain42 root@lain42.top \
             "cd /var/www/studio/downloads/$STAGE && sha256sum * > SHA256SUMS.txt && ls -la"
 
+          # 把本次发布登记进下载页目录（幂等）。脚本随仓库走，避免依赖服务器上的临时文件。
+          scp -i ~/.ssh/id_lain42 scripts/publish-downloads.py root@lain42.top:/tmp/publish-downloads.py
+          ssh -i ~/.ssh/id_lain42 root@lain42.top \
+            "python3 /tmp/publish-downloads.py '${{ steps.tag.outputs.name }}'"
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
@@ -299,11 +304,11 @@ jobs:
             ### 下载
             | 平台 | 文件 | 说明 |
             | --- | --- | --- |
-            | Windows | `*-windows-setup.exe` / `*.msi` | 安装版；另有 portable 免安装 |
-            | macOS | `*.dmg` | 未签名，首次打开请右键 → 打开 |
-            | Android | `*.apk` | 直接侧载安装 |
-            | iOS | `LX-Music-unsigned.ipa` | 未签名，需自行签名或用 AltStore 侧载 |
-            | Linux | `*.AppImage` | chmod +x 后直接运行 |
+            | Windows | `LX.Music-*-windows-setup.exe` / `*.msi` | 安装版；另有 portable 免安装 |
+            | macOS | `LX.Music-*-macos-*.dmg` | 未签名，首次打开请右键 → 打开 |
+            | Android | `LX.Music-*-android-*.apk` | 直接侧载安装 |
+            | iOS | `LX.Music-*-ios-unsigned.ipa` | 未签名，需自行签名或用 AltStore 侧载 |
+            | Linux | `LX.Music-*-linux-*.AppImage` | chmod +x 后直接运行 |
 
             ### 会员与音源订阅
             1. 打开 https://lain42.top/shop/ 用积分购买「音乐会员 · 年卡」（¥88/年）
