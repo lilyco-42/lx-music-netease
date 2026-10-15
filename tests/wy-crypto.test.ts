@@ -19,6 +19,14 @@ const REF = {
   EAPI_KEY: 'e82ckenh8dichen8',
 }
 
+/** 把发出去的 eapi 表单解密回明文，用于断言请求里到底写了什么 */
+const decryptForm = (hex: string): string => {
+  const decipher = createDecipheriv('aes-128-ecb', Buffer.from(REF.EAPI_KEY), Buffer.alloc(0))
+  const raw = Buffer.concat([decipher.update(Buffer.from(hex, 'hex')), decipher.final()])
+  // 去掉 PKCS#7 填充（上游是手写 padding，直接 strip 控制字符更稳）
+  return raw.toString('utf8').replace(/\x0[0-9a-f]/gi, '')
+}
+
 const refAes = (buf: Buffer, mode: 'aes-128-cbc' | 'aes-128-ecb', key: Buffer, iv: Buffer) => {
   const cipher = createCipheriv(mode, key, iv)
   return Buffer.concat([cipher.update(buf), cipher.final()])
@@ -151,11 +159,6 @@ describe('wy source drives the shared kernel end-to-end', () => {
    */
   it('maps internal Quality onto the level names the NetEase API accepts', async () => {
     const levels: string[] = []
-    const decryptParams = (hex: string): string => {
-      const decipher = createDecipheriv('aes-128-ecb', Buffer.from(REF.EAPI_KEY), Buffer.alloc(0))
-      const raw = Buffer.concat([decipher.update(Buffer.from(hex, 'hex')), decipher.final()])
-      return raw.toString('utf8').replace(/\x0[0-9a-f]/gi, '')
-    }
 
     for (const quality of ['128k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'master'] as const) {
       setPlatform(fakeHttp(() => ({ data: [{ url: 'https://cdn.example/x', type: 'mp3', size: 1 }] })))
@@ -163,7 +166,7 @@ describe('wy source drives the shared kernel end-to-end', () => {
       setMusicUrlProvider(null)
       await getSource('wy').getMusicUrl({ id: 1, name: 'n', singer: 's', source: 'wy', songmid: 1 }, quality)
       const params = captured[captured.length - 1]!.form!.params
-      const plain = decryptParams(params)
+      const plain = decryptForm(params)
       const m = plain.match(/"level":"([^"]+)"/)
       levels.push(m ? m[1]! : '??')
     }
@@ -173,6 +176,53 @@ describe('wy source drives the shared kernel end-to-end', () => {
     // 绝不能把内部 Quality 名直接透传
     expect(levels).not.toContain('128k')
     expect(levels).not.toContain('320k')
+  })
+
+  /**
+   * 降档回退：高音质被锁、低音质仍可播时应当自动降档，而不是直接失败。
+   * 实测存在这种曲目（同一首歌 standard 有 url、lossless 为 null）。
+   */
+  it('falls back to a lower quality when the requested one is not playable', async () => {
+    const levels: string[] = []
+    let call = 0
+    setPlatform({
+      ...desktopPlatform,
+      http: {
+        async request(o: HttpRequestOptions) {
+          const plain = decryptForm(o.form!.params)
+          const m = plain.match(/"level":"([^"]+)"/)
+          levels.push(m ? m[1]! : '??')
+          call++
+          // 第一次（lossless）返回 url:null + fee:1，第二次（exhigh）才给 url
+          if (call < 2) {
+            return { statusCode: 200, headers: {}, body: JSON.stringify({ code: 200, data: [{ url: null, fee: 1 }] }), raw: new Uint8Array() }
+          }
+          return { statusCode: 200, headers: {}, body: JSON.stringify({ code: 200, data: [{ url: 'https://cdn.example/ok.mp3', type: 'mp3', size: 1 }] }), raw: new Uint8Array() }
+        },
+      },
+    })
+    installWySource()
+    setMusicUrlProvider(null)
+
+    const info = await getSource('wy').getMusicUrl({ id: 1, name: 'n', singer: 's', source: 'wy', songmid: 1 }, 'flac')
+    expect(info.url).toBe('https://cdn.example/ok.mp3')
+    // 请求档位应当是 高 -> 低，且不含重复的 level
+    expect(levels).toEqual(['lossless', 'exhigh'])
+  })
+
+  it('explains that a VIP-only song cannot be played instead of a generic error', async () => {
+    setPlatform({
+      ...desktopPlatform,
+      http: {
+        async request() {
+          return { statusCode: 200, headers: {}, body: JSON.stringify({ code: 200, data: [{ url: null, fee: 1 }] }), raw: new Uint8Array() }
+        },
+      },
+    })
+    installWySource()
+    setMusicUrlProvider(null)
+    await expect(getSource('wy').getMusicUrl({ id: 1, name: 'n', singer: 's', source: 'wy', songmid: 1 }, '320k'))
+      .rejects.toThrow(/VIP 专享/)
   })
 
   it('honours a host-injected url provider (keeps lx-music custom-source ability)', async () => {
@@ -200,6 +250,64 @@ describe('wy source drives the shared kernel end-to-end', () => {
 
     const pic = await getSource('wy').getPic({ id: 1, name: 'n', singer: 's', source: 'wy', songmid: 7 })
     expect(pic.url).toBe('https://img.example/cover.jpg')
+  })
+
+  it('searches songs and maps the raw payload into MusicItem', async () => {
+    // 形状取自真实接口 /api/search/song/list/page 的实际返回
+    const payload = {
+      code: 200,
+      data: {
+        totalCount: 274,
+        resources: [{
+          baseInfo: {
+            simpleSongData: {
+              id: 509781655,
+              name: '想你就写信 (Live)',
+              dt: 238698,
+              ar: [{ name: '周杰伦' }, { name: '李硕' }],
+              al: { id: 123, name: '中国新歌声第二季 第13期', picUrl: 'http://p2.music.126.net/x.jpg' },
+              privilege: { maxbr: 999000, maxBrLevel: 'hires' },
+              hr: { size: 40000000 },
+              sq: { size: 20000000 },
+              h: { size: 9000000 },
+              l: { size: 3800000 },
+            },
+          },
+        }],
+      },
+    }
+    setPlatform(fakeHttp(() => payload))
+    installWySource()
+
+    const r = await getSource('wy').musicSearch!('周杰伦', 1, 30)
+    expect(r.total).toBe(274)
+    expect(r.allPage).toBe(Math.ceil(274 / 30))
+    expect(r.source).toBe('wy')
+
+    const s = r.list[0]!
+    expect(s.name).toBe('想你就写信 (Live)')
+    expect(s.singer).toBe('周杰伦、李硕')
+    expect(s.albumName).toBe('中国新歌声第二季 第13期')
+    expect(s.songmid).toBe(509781655)
+    expect(s.picUrl).toBe('http://p2.music.126.net/x.jpg')
+    // 238698ms -> 03:58
+    expect(s.interval).toBe('03:58')
+    // hires 档位应同时给出 flac24bit 与 flac
+    expect(s.qualitys).toHaveProperty('flac24bit')
+    expect(s.qualitys).toHaveProperty('flac')
+    expect(s.qualitys).toHaveProperty('320k')
+    expect(s.qualitys).toHaveProperty('128k')
+
+    // 请求必须带上分页参数
+    const req = captured[captured.length - 1]!
+    expect(req.method).toBe('POST')
+    expect(req.form?.params).toMatch(/^[0-9A-F]+$/)
+  })
+
+  it('rejects a search whose body carries a non-200 code', async () => {
+    setPlatform(fakeHttp(() => ({ code: 400 })))
+    installWySource()
+    await expect(getSource('wy').musicSearch!('x', 1, 30)).rejects.toThrow(/code 400/)
   })
 
   it('builds the desktop detail page url', () => {
