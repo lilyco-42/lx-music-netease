@@ -108,7 +108,6 @@ const vinylStyle = computed(() => ({
   boxShadow: '0 10px 30px rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.04)',
 }))
 </script>
-</script>
 
 <template>
   <div class="relative h-full w-full overflow-hidden bg-ncmd-bg text-ncmd-fg">
