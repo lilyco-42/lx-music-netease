@@ -1,14 +1,17 @@
 /**
  * 首页 —— 网易云风格布局（不含任何网易商标/图形资产）
- * 结构：顶栏（Logo + 标题 + 搜索入口）→ 热门推荐 → 猜你喜欢（真实搜索结果）
+ * 结构：顶栏（Logo + 标题 + 搜索入口）→ 推荐歌单 → 猜你喜欢（真实搜索结果）
  *
  * 「猜你喜欢」之前是 8 条写死的假数据（城市夜航 / 林一 / 128 万播放），
  * 现在改成用几个热门关键词去内核里搜真实歌曲，点了就能播。
- * 推荐歌单仍然只是版式占位：本站没有歌单数据源，不假装有。
+ *
+ * 推荐歌单卡上的「30 首 / 50 首」也一并删掉了：本站没有歌单数据源，
+ * 那些数字纯粹是编的。卡片本身留着（版式是网易云的样子），点一下带着
+ * 歌单名跳到搜索页 —— 版式不动，但每张卡都通向真实结果。
  */
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, Text, View } from 'react-native'
-import { getSource, type MusicItem } from '@lxmn/core'
+import { getSource, hasSource, listSources, type MusicItem } from '@lxmn/core'
 import { Logo } from '../components/Icons'
 import { play, usePlayerState } from '../player'
 import { colors, topInset } from '../theme'
@@ -16,18 +19,23 @@ import { colors, topInset } from '../theme'
 interface Playlist {
   id: number
   title: string
-  count: string
+  /** 点击后跳搜索页用的词；与卡片标题解耦，标题可以更「歌单味」 */
+  keyword: string
 }
 
-/** 实测规格：卡片 140x170，圆角 8 */
+/**
+ * 实测规格：卡片 140x170，圆角 8。
+ * 卡片上的小字以前是编的播放量，现在放的是它实际会搜的词 ——
+ * 用户点进去看到的就是搜这个词的结果，所见即所得。
+ */
 const PLAYLISTS: Playlist[] = [
-  { id: 1, title: '每日推荐 · 为你而选', count: '30 首' },
-  { id: 2, title: '私人雷达 · 越听越懂你', count: '50 首' },
-  { id: 3, title: '华语流行精选', count: '42 首' },
-  { id: 4, title: '深夜轻音乐', count: '28 首' },
-  { id: 5, title: '电子 · 律动', count: '36 首' },
-  { id: 6, title: '民谣与故事', count: '33 首' },
-  { id: 7, title: '经典摇滚', count: '45 首' },
+  { id: 1, title: '每日推荐 · 为你而选', keyword: '热门' },
+  { id: 2, title: '私人雷达 · 越听越懂你', keyword: '华语流行' },
+  { id: 3, title: '华语流行精选', keyword: '华语流行' },
+  { id: 4, title: '深夜轻音乐', keyword: '轻音乐' },
+  { id: 5, title: '电子 · 律动', keyword: '电子' },
+  { id: 6, title: '民谣与故事', keyword: '民谣' },
+  { id: 7, title: '经典摇滚', keyword: '摇滚' },
 ]
 
 /** 用几个覆盖面广的关键词拼出首页推荐；任何一个失败都不影响其它 */
@@ -83,10 +91,14 @@ export default function HomeScreen({ onOpenSearch }: { onOpenSearch?: (keyword?:
     let alive = true
     ;(async () => {
       try {
-        const source = getSource('wy')
-        if (!source.musicSearch) throw new Error('当前音源不支持搜索')
+        // 和搜索页同一策略：多音源并发。只查 wy 的话首页翻来覆去就那几首，
+        // 而且 wy 的 VIP 曲目点进去还播不了。
+        const ids = listSources().filter(id => hasSource(id) && Boolean(getSource(id).musicSearch))
+        if (!ids.length) throw new Error('当前没有可用的音源')
         const results = await Promise.all(
-          SEED_KEYWORDS.map(k => source.musicSearch!(k, 1, 10).catch(() => null)),
+          SEED_KEYWORDS.flatMap(k =>
+            ids.map(id => getSource(id).musicSearch!(k, 1, 8).catch(() => null)),
+          ),
         )
         if (!alive) return
         const seen = new Set<string>()
@@ -135,12 +147,14 @@ export default function HomeScreen({ onOpenSearch }: { onOpenSearch?: (keyword?:
           keyExtractor={i => String(i.id)}
           contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
           renderItem={({ item }) => (
-            <Pressable style={{ width: 140 }} onPress={() => onOpenSearch?.(item.title)}>
+            <Pressable style={{ width: 140 }} onPress={() => onOpenSearch?.(item.keyword)}>
               <CoverPlaceholder size={140} radius={8} />
               <Text numberOfLines={2} style={{ color: colors.fg, fontSize: 13, lineHeight: 18, marginTop: 8 }}>
                 {item.title}
               </Text>
-              <Text style={{ color: colors.fainter, fontSize: 11, marginTop: 3 }}>{item.count}</Text>
+              <Text numberOfLines={1} style={{ color: colors.fainter, fontSize: 11, marginTop: 3 }}>
+                搜索「{item.keyword}」
+              </Text>
             </Pressable>
           )}
         />
