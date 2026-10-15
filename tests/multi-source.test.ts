@@ -4,7 +4,11 @@ import { setPlatform, installWySource, installKwSource, installMgSource, install
          listSources, hasSource, getSource, type MusicItem } from '@lxmn/core'
 import { desktopPlatform } from '@lxmn/platform-desktop'
 
-describe('多音源聚合搜索（联网）', () => {
+const live = process.env.LIVE === '1'
+
+// 联网测试：CI 里默认跳过（网络不稳会让构建无故变红），
+// 本地用 LIVE=1 pnpm vitest run tests/multi-source.test.ts 跑。
+describe.skipIf(!live)('多音源聚合搜索（联网）', () => {
   beforeAll(() => {
     setPlatform(desktopPlatform)
     for (const f of [installWySource, installKwSource, installMgSource, installKgSource]) f()
