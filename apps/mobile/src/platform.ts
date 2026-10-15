@@ -11,6 +11,7 @@ import {
   installWySource,
   installKwSource,
   installMgSource,
+  installKgSource,
   hasSource,
   type SourceId,
   type StorageAdapter,
@@ -21,6 +22,7 @@ const BUILTIN: { id: SourceId; install: () => void }[] = [
   { id: 'wy', install: installWySource },
   { id: 'kw', install: installKwSource },
   { id: 'mg', install: installMgSource },
+  { id: 'kg', install: installKgSource },
 ]
 
 /** 把 AsyncStorage 适配成内核的 StorageAdapter */

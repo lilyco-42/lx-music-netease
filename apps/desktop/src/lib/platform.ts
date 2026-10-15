@@ -15,6 +15,7 @@ import {
   createFetchHttp,
   createWebStorage,
   setPlatform,
+  installKgSource,
   installKwSource,
   installMgSource,
   installWySource,
@@ -80,6 +81,7 @@ const BUILTIN: { id: SourceId; install: () => void }[] = [
   { id: 'wy', install: installWySource },
   { id: 'kw', install: installKwSource },
   { id: 'mg', install: installMgSource },
+  { id: 'kg', install: installKgSource },
 ]
 
 export function ensureDesktopPlatform(): void {
