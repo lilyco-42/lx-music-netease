@@ -142,6 +142,39 @@ describe('wy source drives the shared kernel end-to-end', () => {
     expect(req.headers?.origin).toBe('https://music.163.com')
   })
 
+  /**
+   * 回归测试：内核的 Quality 不能直接当 eapi 的 level 用。
+   *
+   * 实测（对真实接口）：level 传 '128k' / '320k' / 'flac' 都会返回 code:-110 + url:null，
+   * 只有 'hires' 因为恰好与上游同名才碰巧可用。必须走 WY_LEVEL 映射。
+   * 这里把发出去的 eapi 表单**解密回来**，断言里面确实是上游认识的 level 词。
+   */
+  it('maps internal Quality onto the level names the NetEase API accepts', async () => {
+    const levels: string[] = []
+    const decryptParams = (hex: string): string => {
+      const decipher = createDecipheriv('aes-128-ecb', Buffer.from(REF.EAPI_KEY), Buffer.alloc(0))
+      const raw = Buffer.concat([decipher.update(Buffer.from(hex, 'hex')), decipher.final()])
+      return raw.toString('utf8').replace(/\x0[0-9a-f]/gi, '')
+    }
+
+    for (const quality of ['128k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'master'] as const) {
+      setPlatform(fakeHttp(() => ({ data: [{ url: 'https://cdn.example/x', type: 'mp3', size: 1 }] })))
+      installWySource()
+      setMusicUrlProvider(null)
+      await getSource('wy').getMusicUrl({ id: 1, name: 'n', singer: 's', source: 'wy', songmid: 1 }, quality)
+      const params = captured[captured.length - 1]!.form!.params
+      const plain = decryptParams(params)
+      const m = plain.match(/"level":"([^"]+)"/)
+      levels.push(m ? m[1]! : '??')
+    }
+
+    // 上游真实接受的 level 词表
+    expect(levels).toEqual(['standard', 'exhigh', 'lossless', 'lossless', 'hires', 'jyeffect', 'jymaster'])
+    // 绝不能把内部 Quality 名直接透传
+    expect(levels).not.toContain('128k')
+    expect(levels).not.toContain('320k')
+  })
+
   it('honours a host-injected url provider (keeps lx-music custom-source ability)', async () => {
     setPlatform(fakeHttp(() => ({ data: [] })))
     installWySource()

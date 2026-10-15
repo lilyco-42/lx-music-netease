@@ -21,11 +21,29 @@ export function setMusicUrlProvider(provider: MusicUrlProvider | null): void {
 
 const WY_SONG_URL = '/api/song/enhance/player/url/v1'
 
+/**
+ * 内核的 Quality 是**跨音源统一**的命名（128k/320k/flac/...），
+ * 而网易 eapi 的 level 参数用的是另一套专有词（standard/higher/exhigh/lossless/hires）。
+ *
+ * 直接传 Quality 会被服务端判为非法 level，返回 code:-110 + url:null —— 实测
+ * 'hires' 恰好与上游同名才碰巧能用，'128k' / '320k' / 'flac' 全部失败。
+ * 这里做显式映射。
+ */
+const WY_LEVEL: Record<Quality, string> = {
+  '128k': 'standard',
+  '320k': 'exhigh',
+  flac: 'lossless',
+  flac24bit: 'lossless',
+  hires: 'hires',
+  atmos: 'jyeffect',
+  master: 'jymaster',
+}
+
 /** 默认实现：走 eapi 取播放地址（与原接口同路径、同参数） */
 const defaultGetMusicUrl: MusicUrlProvider = async (songInfo, quality) => {
   const { statusCode, body } = await eapiRequest(WY_SONG_URL, {
     ids: JSON.stringify([songInfo.songmid]),
-    level: quality,
+    level: WY_LEVEL[quality] ?? 'exhigh',
     encodeType: 'flac',
     header: { osver: '', deviceId: '', appver: '', versioncode: '', mobilename: '', buildver: '', resolution: '', __csrf: '', os: 'pc', channel: '', requestId: String(Date.now()) },
   })
