@@ -51,5 +51,31 @@ target 'LXMusic' do
         build_config.build_settings['SWIFT_VERSION'] = '5.0'
       end
     end
+
+    # react-native-track-player 的 podspec 声明 swift_version 4.2，编译出的 .o 会
+    # autolink 到 libswiftCompatibility56（链接命令里是 -lswiftCompatibility56）。
+    # 这个 .a 只存在于 **工具链** 目录：
+    #   $(TOOLCHAIN_DIR)/usr/lib/swift/iphoneos/libswiftCompatibility56.a
+    # 而 SDK 目录 $(SDKROOT)/usr/lib/swift/ 下只有 .tbd 桩文件。
+    # 本 app target 是纯 Objective-C（AppDelegate.mm / main.m，没有任何 .swift），
+    # Xcode 因此判定「这不是 Swift target」，不把工具链的 swift 目录加进
+    # LIBRARY_SEARCH_PATHS，链接器自然找不到 -lswiftCompatibility56。
+    # 这里直接给 user project 的每个 target 补上该目录（保留 $(inherited)）。
+    swift_compat_dir = '$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)'
+    installer.aggregate_targets.each do |aggregate_target|
+      user_project = aggregate_target.user_project
+      next if user_project.nil?
+      user_project.native_targets.each do |native_target|
+        native_target.build_configurations.each do |build_config|
+          paths = build_config.build_settings['LIBRARY_SEARCH_PATHS'] || []
+          paths = [paths] if paths.is_a?(String)
+          paths = paths.dup
+          paths << '$(inherited)' unless paths.include?('$(inherited)')
+          paths << swift_compat_dir unless paths.include?(swift_compat_dir)
+          build_config.build_settings['LIBRARY_SEARCH_PATHS'] = paths
+        end
+      end
+      user_project.save
+    end
   end
 end

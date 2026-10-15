@@ -206,13 +206,26 @@ jobs:
         run: |
           bundle install || true
           bundle exec pod install || pod install
+      # react-native-track-player 的 podspec 声明 swift_version 4.2，编译出的 .o 会
+      # autolink 到 libswiftCompatibility56（链接命令里就是 -lswiftCompatibility56）。
+      # 这个 .a 确实存在，但只在 **工具链** 目录下：
+      #   <Xcode>/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos/
+      # 而 SDK 目录 <iPhoneOS.sdk>/usr/lib/swift/ 里只有 .tbd 桩。
+      # 我们的 app target 是纯 Objective-C（AppDelegate.mm / main.m，没有任何 .swift），
+      # Xcode 因此认为「这不是 Swift target」，不给链接器加工具链的 swift 搜索路径，
+      # 于是 -lswiftCompatibility56 找不到实体，报 Undefined symbols。
+      # 显式把工具链的 swift/iphoneos 目录加进 LIBRARY_SEARCH_PATHS 即可。
       - name: Build unsigned .app
         working-directory: apps/mobile/ios
         run: |
+          SWIFT_LIBS="$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos"
+          echo "SWIFT_LIBS=$SWIFT_LIBS"
+          ls -la "$SWIFT_LIBS/libswiftCompatibility56.a"
           xcodebuild -workspace LXMusic.xcworkspace \
             -scheme LXMusic -configuration Release \
             -sdk iphoneos -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
+            LIBRARY_SEARCH_PATHS="\$(inherited) $SWIFT_LIBS" \
             build
       - name: Package unsigned ipa
         working-directory: apps/mobile/ios
