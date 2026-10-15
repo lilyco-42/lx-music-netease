@@ -1,4 +1,4 @@
-package top.lain42.lxmusic
+package top.lain42.lycomusic
 
 import android.app.Application
 import com.facebook.react.PackageList

@@ -81,9 +81,17 @@ function fmtTime(ms: number): string {
       >最近播放 {{ history.length }}</button>
     </div>
 
-    <p v-if="!list.length" class="mt-6 text-[15px] text-ncm-faint">
-      {{ tab === 'fav' ? '还没有收藏。在搜索页点右侧的心形即可收藏。' : '还没有播放记录。' }}
-    </p>
+    <div v-if="!list.length" class="mt-10 flex flex-col items-center">
+      <img
+        :src="tab === 'fav' ? '/art/empty-favorites.jpg' : '/art/empty-history.jpg'"
+        alt=""
+        class="w-[180px] rounded-cover opacity-90"
+        loading="lazy"
+      />
+      <p class="mt-4 text-[15px] text-ncm-faint">
+        {{ tab === 'fav' ? '还没有收藏。在搜索页点右侧的心形即可收藏。' : '还没有播放记录。' }}
+      </p>
+    </div>
 
     <ul v-else class="mt-5 flex flex-col">
       <li
@@ -95,7 +103,15 @@ function fmtTime(ms: number): string {
         <span class="w-6 shrink-0 text-center text-[15px] text-ncm-fainter">{{ i + 1 }}</span>
 
         <div class="relative size-[44px] shrink-0 overflow-hidden rounded-[5px] bg-ncm-fainter/30">
-          <img v-if="row.item.picUrl" :src="String(row.item.picUrl)" alt="" class="size-full object-cover" loading="lazy" />
+          <img
+            v-if="row.item.picUrl"
+            :src="String(row.item.picUrl)"
+            alt=""
+            class="size-full object-cover"
+            loading="lazy"
+            @error="($event.target as HTMLImageElement).src = '/art/cover-default.jpg'"
+          />
+          <img v-else src="/art/cover-default.jpg" alt="" class="size-full object-cover" loading="lazy" />
           <button
             type="button"
             class="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100"

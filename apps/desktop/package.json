@@ -2,7 +2,7 @@
   "name": "@lxmn/app-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "LX Music 桌面端 — 网易云风格 UI（Vue3 + Electron）",
+  "description": "Lyco Music 桌面端 — 网易云风格 UI（Vue3 + Electron）",
   "type": "module",
   "scripts": {
     "dev": "vite",

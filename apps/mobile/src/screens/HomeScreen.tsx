@@ -41,9 +41,13 @@ const PLAYLISTS: Playlist[] = [
 /** 用几个覆盖面广的关键词拼出首页推荐；任何一个失败都不影响其它 */
 const SEED_KEYWORDS = ['热门', '华语流行', '轻音乐']
 
+// GPT 生成的默认封面占位图（Metro 只打包被静态 require 引用的资源）
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const DEFAULT_COVER = require('../../assets/art/cover-default.jpg') as number
+
 /**
  * 封面。有 uri 就真的把图显示出来 —— 之前这个分支渲染的是一个空 View，
- * 等于所有能拿到封面的曲目反而看不到封面。加载失败时回落到几何占位。
+ * 等于所有能拿到封面的曲目反而看不到封面。加载失败时回落到生成的占位图。
  */
 function CoverPlaceholder({ size, radius = 8, uri }: { size: number; radius?: number; uri?: string }) {
   const [failed, setFailed] = useState(false)
@@ -57,26 +61,15 @@ function CoverPlaceholder({ size, radius = 8, uri }: { size: number; radius?: nu
     )
   }
   return (
-    <View
+    <Image
+      source={DEFAULT_COVER}
       style={{
         width: size,
         height: size,
         borderRadius: radius,
         backgroundColor: colors.elevated,
-        alignItems: 'center',
-        justifyContent: 'center',
       }}
-    >
-      {/* 几何占位：三条竖条，暗示封面 */}
-      <View style={{ flexDirection: 'row', gap: 3, alignItems: 'flex-end' }}>
-        {[0.4, 0.7, 0.55].map((h, i) => (
-          <View
-            key={i}
-            style={{ width: 4, height: size * 0.34 * h * 2, borderRadius: 2, backgroundColor: colors.fainter }}
-          />
-        ))}
-      </View>
-    </View>
+    />
   )
 }
 

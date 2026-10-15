@@ -160,10 +160,14 @@ const vinylStyle = computed(() => ({
                   alt=""
                   class="h-full w-full object-cover"
                   referrerpolicy="no-referrer"
+                  @error="($event.target as HTMLImageElement).src = '/art/cover-default.jpg'"
                 />
-                <div v-else class="flex h-full w-full items-center justify-center">
-                  <span class="text-[11px] tracking-widest text-ncmd-muted">ALBUM</span>
-                </div>
+                <img
+                  v-else
+                  src="/art/cover-default.jpg"
+                  alt=""
+                  class="h-full w-full object-cover"
+                />
               </div>
             </div>
           </div>

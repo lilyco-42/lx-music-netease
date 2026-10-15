@@ -105,8 +105,9 @@ function openPlaylist(title: string): void {
           class="group w-[157px] shrink-0 cursor-pointer"
           @click="openPlaylist(pl.title)"
         >
-          <!-- 封面 156x157，圆角 7px -->
+          <!-- 封面 156x157，圆角 7px；无封面数据时用生成的占位图 -->
           <div class="relative h-[157px] w-[156px] overflow-hidden rounded-cover bg-ncm-fainter/40">
+            <img src="/art/playlist-default.jpg" alt="" class="size-full object-cover" loading="lazy" />
             <div class="absolute bottom-2 right-2 flex size-[30px] items-center justify-center rounded-full bg-white/90 opacity-0 transition-opacity group-hover:opacity-100">
               <svg viewBox="0 0 24 24" class="size-3.5 fill-ncm-accent-play"><path d="M8 5v14l11-7z" /></svg>
             </div>

@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "LXMusic.app"
-               BlueprintName = "LXMusic"
-               ReferencedContainer = "container:LXMusic.xcodeproj">
+               BuildableName = "LycoMusic.app"
+               BlueprintName = "LycoMusic"
+               ReferencedContainer = "container:LycoMusic.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "LXMusicTests.xctest"
-               BlueprintName = "LXMusicTests"
-               ReferencedContainer = "container:LXMusic.xcodeproj">
+               BuildableName = "LycoMusicTests.xctest"
+               BlueprintName = "LycoMusicTests"
+               ReferencedContainer = "container:LycoMusic.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "LXMusic.app"
-            BlueprintName = "LXMusic"
-            ReferencedContainer = "container:LXMusic.xcodeproj">
+            BuildableName = "LycoMusic.app"
+            BlueprintName = "LycoMusic"
+            ReferencedContainer = "container:LycoMusic.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "LXMusic.app"
-            BlueprintName = "LXMusic"
-            ReferencedContainer = "container:LXMusic.xcodeproj">
+            BuildableName = "LycoMusic.app"
+            BlueprintName = "LycoMusic"
+            ReferencedContainer = "container:LycoMusic.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

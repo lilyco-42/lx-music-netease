@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""把 lx-music-netease 各平台安装包登记进下载页目录。幂等，可重复执行。
+"""把 lyco_music 各平台安装包登记进下载页目录。幂等，可重复执行。
 
 用法：publish-downloads.py [tag]
   不带参数时取 STAGE_ROOT 下最新的 v* 目录；
@@ -13,8 +13,8 @@ import json, os, glob, hashlib, shutil, sys, time
 
 MAN = '/var/www/studio/downloads/manifest.json'
 HTML = '/var/www/studio/downloads/index.html'
-STAGE_ROOT = '/var/www/studio/downloads/lx-music-netease'
-REPO = 'https://github.com/lilyco-42/lx-music-netease'
+STAGE_ROOT = '/var/www/studio/downloads/lyco_music'
+REPO = 'https://github.com/lilyco-42/lyco_music'
 
 if len(sys.argv) > 1 and sys.argv[1].strip():
     tag = sys.argv[1].strip()
@@ -25,7 +25,7 @@ else:
     assert stages, 'no stage dirs under ' + STAGE_ROOT
     stage = stages[-1]
     tag = os.path.basename(stage)
-base_url = 'https://lain42.top/downloads/lx-music-netease/' + tag
+base_url = 'https://lain42.top/downloads/lyco_music/' + tag
 files = sorted(os.listdir(stage))
 
 def sha(p):
@@ -94,7 +94,7 @@ common = {
 items = []
 
 if win:
-    items.append(dict(id='lx-music-windows', name='LX Music（Windows）',
+    items.append(dict(id='lyco-music-windows', name='LX Music（Windows）',
         summary='网易云音乐风格的开源音乐播放器；桌面端与移动端共用同一套音源内核，支持导入订阅链接一键补全第三方音源。',
         category='媒体工具', platforms=['windows'],
         mirror=entry(win, 'win', 'Windows x64 · 安装版', ''),
@@ -102,7 +102,7 @@ if win:
 if msi:
     # MSI 一直在服务器上（也一直挂在 GitHub Release 里），但之前只被 pick 出来
     # 打印了一行日志，从没写进 manifest —— 下载页看不到，等于白构建。
-    items.append(dict(id='lx-music-windows-msi', name='LX Music（Windows MSI）',
+    items.append(dict(id='lyco-music-windows-msi', name='LX Music（Windows MSI）',
         summary='网易云音乐风格的开源音乐播放器，Windows MSI 安装包，适合企业批量部署与静默安装。',
         category='媒体工具', platforms=['windows'],
         mirror=entry(msi, 'win', 'Windows x64 · MSI 安装包', ''),
@@ -110,28 +110,28 @@ if msi:
         note='MSI 包支持静默安装（msiexec /qn），适合批量部署；个人用户建议下载上面的 setup.exe 向导版。',
         **common))
 if portable:
-    items.append(dict(id='lx-music-windows-portable', name='LX Music（Windows 便携版）',
+    items.append(dict(id='lyco-music-windows-portable', name='LX Music（Windows 便携版）',
         summary='网易云音乐风格的开源音乐播放器，Windows 免安装便携版，解压即用，不写注册表。',
         category='媒体工具', platforms=['windows'],
         mirror=entry(portable, 'win', 'Windows x64 · 免安装便携版', ''),
         note='便携版不需要安装，双击即可运行；数据与配置保存在程序所在目录。适合放在 U 盘里随身携带。',
         **common))
 if dmg_arm:
-    items.append(dict(id='lx-music-macos', name='LX Music（macOS）',
+    items.append(dict(id='lyco-music-macos', name='LX Music（macOS）',
         summary='网易云音乐风格的开源音乐播放器，Apple Silicon 与 Intel 双架构。未签名，首次打开需右键 → 打开。',
         category='媒体工具', platforms=['macos'],
         mirror=entry(dmg_arm, 'mac', 'macOS arm64 · Apple Silicon', ''),
         note='安装包未经 Apple 签名与公证。首次打开请右键点图标选「打开」，或到「系统设置 → 隐私与安全性」点「仍要打开」。Intel 机型请改用同目录的 macos-x64.dmg。',
         **common))
 if apk:
-    items.append(dict(id='lx-music-android', name='LX Music（Android）',
+    items.append(dict(id='lyco-music-android', name='LX Music（Android）',
         summary='网易云音乐风格的开源音乐播放器安卓版，含 arm64-v8a 与 armeabi-v7a。',
         category='媒体工具', platforms=['android'],
         mirror=entry(apk, 'android', 'Android · 通用 APK', ''),
         note='使用仓库内置调试证书签名，升级安装时请先卸载旧版。安装前需在系统设置里允许「安装未知来源应用」。',
         **common))
 if appimg:
-    items.append(dict(id='lx-music-linux', name='LX Music（Linux）',
+    items.append(dict(id='lyco-music-linux', name='LX Music（Linux）',
         summary='网易云音乐风格的开源音乐播放器 Linux 版，单文件 AppImage，无需安装。',
         category='媒体工具', platforms=['linux'],
         mirror=entry(appimg, 'linux', 'Linux x86_64 · AppImage', ''),
@@ -141,7 +141,7 @@ if ipa:
     # iOS 条目必须和其他平台一样填 mirror。
     # 之前这里用的是 download_url + 手写的 channel/official，下载页只认 mirror，
     # 结果 iOS 卡片渲染成「file: None」，明明服务器上 4.1MB 的 ipa 已经传上去了。
-    items.append(dict(id='lx-music-ios', name='LX Music（iOS）',
+    items.append(dict(id='lyco-music-ios', name='LX Music（iOS）',
         summary='网易云音乐风格的开源音乐播放器 iOS 版。安装包未签名，需要自行签名或使用 AltStore / SideStore 侧载。',
         category='媒体工具', platforms=['ios'],
         mirror=entry(ipa, 'ios', 'iOS · 未签名 IPA', ''),

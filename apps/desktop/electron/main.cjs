@@ -1,7 +1,7 @@
 /**
  * Electron 主进程
  *
- * 只做外壳：加载 Vite 构建产物，保留 lx-music 原有的自定义音源能力
+ * 只做外壳：加载 Vite 构建产物，保留 lx-music 上游的自定义音源能力
  * （渲染层可通过 preload 暴露的 API 读写本地文件 / 发起无 CORS 请求）。
  */
 const { app, BrowserWindow, shell, ipcMain, net } = require('electron')

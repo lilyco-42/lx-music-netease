@@ -2,7 +2,7 @@
   "name": "@lxmn/app-mobile",
   "version": "0.1.0",
   "private": true,
-  "description": "LX Music 移动端 — 网易云风格 UI（React Native）",
+  "description": "Lyco Music 移动端 — 网易云风格 UI（React Native）",
   "license": "Apache-2.0",
   "main": "index.js",
   "scripts": {

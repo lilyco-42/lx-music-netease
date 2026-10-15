@@ -41,7 +41,7 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lxmn-windows
+          name: lyco-windows
           path: |
             apps/desktop/release/*.exe
             apps/desktop/release/*.msi
@@ -80,7 +80,7 @@ jobs:
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lxmn-macos
+          name: lyco-macos
           path: |
             apps/desktop/release/*.dmg
             apps/desktop/release/*.zip
@@ -110,7 +110,7 @@ jobs:
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lxmn-linux
+          name: lyco-linux
           path: |
             apps/desktop/release/*.AppImage
           if-no-files-found: warn
@@ -230,7 +230,7 @@ jobs:
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lxmn-android
+          name: lyco-android
           path: out/*.apk
           if-no-files-found: warn
           retention-days: 14
@@ -269,8 +269,8 @@ jobs:
           SWIFT_LIBS="$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos"
           echo "SWIFT_LIBS=$SWIFT_LIBS"
           ls -la "$SWIFT_LIBS/libswiftCompatibility56.a"
-          xcodebuild -workspace LXMusic.xcworkspace \
-            -scheme LXMusic -configuration Release \
+          xcodebuild -workspace LycoMusic.xcworkspace \
+            -scheme LycoMusic -configuration Release \
             -sdk iphoneos -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
             LIBRARY_SEARCH_PATHS="\$(inherited) $SWIFT_LIBS" \
@@ -279,7 +279,7 @@ jobs:
         working-directory: apps/mobile/ios
         run: |
           mkdir -p Payload
-          cp -R build/Build/Products/Release-iphoneos/LXMusic.app Payload/
+          cp -R build/Build/Products/Release-iphoneos/LycoMusic.app Payload/
           # 与 exe/msi/dmg/apk 统一命名，下载页才能显示版本号；
           # 该 ipa 未签名，文件名保留 unsigned 以免用户误以为可直接安装。
           VERSION=$(node -p "require('../../../package.json').version")
@@ -288,7 +288,7 @@ jobs:
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lxmn-ios
+          name: lyco-ios
           path: apps/mobile/LX.Music-*-ios-unsigned.ipa
           if-no-files-found: warn
           retention-days: 14
@@ -341,7 +341,7 @@ jobs:
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_lain42
           chmod 600 ~/.ssh/id_lain42
           ssh-keyscan -H lain42.top >> ~/.ssh/known_hosts 2>/dev/null || true
-          STAGE="lx-music-netease/${{ steps.tag.outputs.name }}"
+          STAGE="lyco_music/${{ steps.tag.outputs.name }}"
           # 先清空再传：同一个 tag 重跑时，上一轮的文件会残留在目录里
           # （例如旧命名 app-release.apk），导致 SHA256SUMS 与下载页混入过期产物。
           ssh -i ~/.ssh/id_lain42 root@lain42.top "rm -rf /var/www/studio/downloads/$STAGE && mkdir -p /var/www/studio/downloads/$STAGE"

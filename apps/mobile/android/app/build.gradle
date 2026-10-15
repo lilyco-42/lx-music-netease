@@ -88,9 +88,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "top.lain42.lxmusic"
+    namespace "top.lain42.lycomusic"
     defaultConfig {
-        applicationId "top.lain42.lxmusic"
+        applicationId "top.lain42.lycomusic"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode(System.getenv("LXMN_VERSION_CODE") ? System.getenv("LXMN_VERSION_CODE").toInteger() : 1)

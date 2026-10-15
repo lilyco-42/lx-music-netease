@@ -1,10 +1,10 @@
-appId: top.lain42.lxmusic
-productName: LX Music
+appId: top.lain42.lycomusic
+productName: Lyco Music
 copyright: Copyright © 2026 lain42
 
 # 关于文件名：显示名（productName）保留空格，但 **artifactName 一律用
-# "LX.Music" 这个不带空格的字面量**，不要写成 ${productName}。
-# 因为 ${productName} = "LX Music"，产物会叫 "LX Music-0.1.0-windows-setup.exe"，
+# "Lyco.Music" 这个不带空格的字面量**，不要写成本名。
+# 因为显示名带空格，直接内插会让产物名里出现空格，
 # 空格在 URL 里必须转义成 %20；下载页的直链一旦被浏览器/下载器二次编码就会 404。
 # 用点号代替空格，文件名全平台安全。
 
@@ -36,7 +36,7 @@ win:
       arch: [x64]
     - target: portable
       arch: [x64]
-  artifactName: LX.Music-${version}-windows-${arch}.${ext}
+  artifactName: Lyco.Music-${version}-windows-${arch}.${ext}
 
 msi:
   oneClick: false
@@ -44,7 +44,7 @@ msi:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: LX Music
-  artifactName: LX.Music-${version}-windows-${arch}.msi
+  artifactName: Lyco.Music-${version}-windows-${arch}.msi
 
 # portable 必须单独写 artifactName。
 # 不写的话它会回退到 win.artifactName（LX.Music-<ver>-windows-<arch>.${ext}），
@@ -53,7 +53,7 @@ msi:
 # 而真正的 MSI 是 OLE2 复合文档，必须以 d0cf11e0 开头。
 # CI 日志也印证了：building target=portable file=release\LX.Music-0.1.0-windows-x64.msi
 portable:
-  artifactName: LX.Music-${version}-windows-${arch}-portable.${ext}
+  artifactName: Lyco.Music-${version}-windows-${arch}-portable.${ext}
 
 nsis:
   oneClick: false
@@ -62,7 +62,7 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: LX Music
-  artifactName: LX.Music-${version}-windows-setup.${ext}
+  artifactName: Lyco.Music-${version}-windows-setup.${ext}
 
 mac:
   icon: build/icon.png
@@ -70,7 +70,7 @@ mac:
   target:
     - target: dmg
       arch: [x64, arm64]
-  artifactName: LX.Music-${version}-macos-${arch}.${ext}
+  artifactName: Lyco.Music-${version}-macos-${arch}.${ext}
   # 没有开发者证书，交给 afterPack 钩子做 ad-hoc 签名。
   #
   # 这里必须显式写 null。不写的话 electron-builder 会走
@@ -104,4 +104,4 @@ linux:
   target:
     - target: AppImage
       arch: [x64]
-  artifactName: LX.Music-${version}-linux-${arch}.${ext}
+  artifactName: Lyco.Music-${version}-linux-${arch}.${ext}

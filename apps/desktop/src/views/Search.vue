@@ -69,7 +69,10 @@ function fmtDuration(v: unknown): string {
     <p v-if="loading" class="text-[15px] text-ncm-faint">搜索中…</p>
     <p v-else-if="error" class="text-[15px] text-ncm-accent">{{ error }}</p>
     <p v-else-if="!keyword" class="text-[15px] text-ncm-faint">在上方输入关键词后回车</p>
-    <p v-else-if="!list.length" class="text-[15px] text-ncm-faint">没有找到相关歌曲</p>
+    <div v-else-if="!list.length" class="flex flex-col items-center">
+      <img src="/art/empty-search.jpg" alt="" class="w-[180px] rounded-cover opacity-90" loading="lazy" />
+      <p class="mt-4 text-[15px] text-ncm-faint">没有找到相关歌曲</p>
+    </div>
 
     <ul v-else class="flex flex-col">
       <li
@@ -81,7 +84,15 @@ function fmtDuration(v: unknown): string {
         <span class="w-6 shrink-0 text-center text-[15px] text-ncm-fainter">{{ i + 1 }}</span>
 
         <div class="relative size-[44px] shrink-0 overflow-hidden rounded-[5px] bg-ncm-fainter/30">
-          <img v-if="item.picUrl" :src="String(item.picUrl)" alt="" class="size-full object-cover" loading="lazy" />
+          <img
+            v-if="item.picUrl"
+            :src="String(item.picUrl)"
+            alt=""
+            class="size-full object-cover"
+            loading="lazy"
+            @error="($event.target as HTMLImageElement).src = '/art/cover-default.jpg'"
+          />
+          <img v-else src="/art/cover-default.jpg" alt="" class="size-full object-cover" loading="lazy" />
           <button
             type="button"
             class="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100"

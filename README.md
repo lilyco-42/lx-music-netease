@@ -1,4 +1,4 @@
-# lx-music-netease
+# lyco_music
 
 LX Music 的**网易云音乐风格 UI 重制版**，并把桌面端与移动端重复的核心逻辑抽取为共享内核。
 

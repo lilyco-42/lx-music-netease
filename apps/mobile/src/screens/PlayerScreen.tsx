@@ -18,6 +18,10 @@ import {
   useLyricLines, usePlayerState, useProgressState,
 } from '../player'
 
+// GPT 生成的默认封面占位图（Metro 只打包静态 require 的资源）
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const DEFAULT_COVER = require('../../assets/art/cover-default.jpg') as number
+
 function fmt(t: number): string {
   if (!Number.isFinite(t) || t < 0) t = 0
   const m = Math.floor(t / 60)
@@ -95,11 +99,7 @@ export default function PlayerScreen() {
             {st.picUrl ? (
               <Image source={{ uri: st.picUrl }} style={{ width: 180, height: 180 }} />
             ) : (
-              <View style={{ flexDirection: 'row', gap: 5, alignItems: 'flex-end' }}>
-                {[0.45, 0.75, 0.6].map((h, i) => (
-                  <View key={i} style={{ width: 6, height: 70 * h, borderRadius: 3, backgroundColor: colors.fg }} />
-                ))}
-              </View>
+              <Image source={DEFAULT_COVER} style={{ width: 180, height: 180 }} />
             )}
           </View>
           {/* 中心轴 */}
