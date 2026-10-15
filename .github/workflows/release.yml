@@ -65,6 +65,12 @@ jobs:
         run: pnpm -r --filter './packages/**' build
       - name: Build renderer
         run: pnpm --filter @lxmn/app-desktop build
+      # electron-builder 打包 dmg 时要挂载卷再卸载；macOS runner 上 Spotlight
+      # 会索引刚挂载的卷，导致 hdiutil detach 以 'Resource busy' 反复失败。
+      # 关掉索引即可，这也是 electron-builder 官方 issue 里给出的办法。
+      - name: Disable Spotlight indexing
+        run: sudo mdutil -a -i off
+
       - name: Package (dmg x64 + arm64, unsigned)
         working-directory: apps/desktop
         env:
