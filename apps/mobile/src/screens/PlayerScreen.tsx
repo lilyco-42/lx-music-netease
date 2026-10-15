@@ -20,7 +20,7 @@ import {
 
 // GPT 生成的默认封面占位图（Metro 只打包静态 require 的资源）
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const DEFAULT_COVER = require('../../assets/art/cover-default.jpg') as number
+const DEFAULT_COVER = require('../assets/art/cover-default.jpg') as number
 
 function fmt(t: number): string {
   if (!Number.isFinite(t) || t < 0) t = 0

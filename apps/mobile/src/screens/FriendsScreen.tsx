@@ -11,7 +11,7 @@ import { useFriendsApi, type FriendsState } from '../friends'
 import { colors, topInset } from '../theme'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const AVATAR = require('../../assets/art/avatar-default.jpg') as number
+const AVATAR = require('../assets/art/avatar-default.jpg') as number
 
 function fmtTime(t: number): string {
   if (!t) return '—'

@@ -38,7 +38,7 @@ def sha(p):
 def norm(s):
     """把文件名归一化后比较：空格与点号等价。
 
-    electron-builder 的产物名随配置变过（"LX Music-..." -> "LX.Music-..."），
+    electron-builder 的产物名随配置变过（"LX Music-..." -> "Lyco.Music-..."），
     归一化后新旧命名都能匹配上，脚本不会因为改了 artifactName 就失效。
     """
     return s.replace(' ', '.').lower()
@@ -106,7 +106,7 @@ if msi:
         summary='网易云音乐风格的开源音乐播放器，Windows MSI 安装包，适合企业批量部署与静默安装。',
         category='媒体工具', platforms=['windows'],
         mirror=entry(msi, 'win', 'Windows x64 · MSI 安装包', ''),
-        install='msiexec /i LX.Music-*.msi /qn',
+        install='msiexec /i Lyco.Music-*.msi /qn',
         note='MSI 包支持静默安装（msiexec /qn），适合批量部署；个人用户建议下载上面的 setup.exe 向导版。',
         **common))
 if portable:
@@ -135,7 +135,7 @@ if appimg:
         summary='网易云音乐风格的开源音乐播放器 Linux 版，单文件 AppImage，无需安装。',
         category='媒体工具', platforms=['linux'],
         mirror=entry(appimg, 'linux', 'Linux x86_64 · AppImage', ''),
-        install='chmod +x LX.Music-*.AppImage && ./LX.Music-*.AppImage',
+        install='chmod +x Lyco.Music-*.AppImage && ./Lyco.Music-*.AppImage',
         **common))
 if ipa:
     # iOS 条目必须和其他平台一样填 mirror。

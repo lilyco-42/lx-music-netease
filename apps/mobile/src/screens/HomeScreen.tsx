@@ -43,7 +43,7 @@ const SEED_KEYWORDS = ['热门', '华语流行', '轻音乐']
 
 // GPT 生成的默认封面占位图（Metro 只打包被静态 require 引用的资源）
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const DEFAULT_COVER = require('../../assets/art/cover-default.jpg') as number
+const DEFAULT_COVER = require('../assets/art/cover-default.jpg') as number
 
 /**
  * 封面。有 uri 就真的把图显示出来 —— 之前这个分支渲染的是一个空 View，

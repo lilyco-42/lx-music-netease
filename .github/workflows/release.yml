@@ -224,7 +224,7 @@ jobs:
               *-armeabi-v7a.apk) suffix=armeabi-v7a ;;
               *) suffix=universal ;;
             esac
-            mv "$f" "out/LX.Music-${VERSION}-android-${suffix}.apk"
+            mv "$f" "out/Lyco.Music-${VERSION}-android-${suffix}.apk"
           done
           ls -la out
       - name: Upload Android artifacts
@@ -283,13 +283,13 @@ jobs:
           # 与 exe/msi/dmg/apk 统一命名，下载页才能显示版本号；
           # 该 ipa 未签名，文件名保留 unsigned 以免用户误以为可直接安装。
           VERSION=$(node -p "require('../../../package.json').version")
-          zip -qry "../LX.Music-${VERSION}-ios-unsigned.ipa" Payload
-          ls -la ../LX.Music-*.ipa
+          zip -qry "../Lyco.Music-${VERSION}-ios-unsigned.ipa" Payload
+          ls -la ../Lyco.Music-*.ipa
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: lyco-ios
-          path: apps/mobile/LX.Music-*-ios-unsigned.ipa
+          path: apps/mobile/Lyco.Music-*-ios-unsigned.ipa
           if-no-files-found: warn
           retention-days: 14
 
@@ -394,12 +394,12 @@ jobs:
             ### 下载
             | 平台 | 文件 | 说明 |
             | --- | --- | --- |
-            | Windows | `LX.Music-*-windows-setup.exe` / `*.msi` | 安装版（NSIS 向导 / MSI 静默） |
-            | Windows 便携 | `LX.Music-*-windows-x64-portable.exe` | 免安装，双击即用 |
-            | macOS | `LX.Music-*-macos-*.dmg` | 未签名，首次打开请右键 → 打开 |
-            | Android | `LX.Music-*-android-*.apk` | 直接侧载安装 |
-            | iOS | `LX.Music-*-ios-unsigned.ipa` | 未签名，需自行签名或用 AltStore 侧载 |
-            | Linux | `LX.Music-*-linux-*.AppImage` | chmod +x 后直接运行 |
+            | Windows | `Lyco.Music-*-windows-setup.exe` / `*.msi` | 安装版（NSIS 向导 / MSI 静默） |
+            | Windows 便携 | `Lyco.Music-*-windows-x64-portable.exe` | 免安装，双击即用 |
+            | macOS | `Lyco.Music-*-macos-*.dmg` | 未签名，首次打开请右键 → 打开 |
+            | Android | `Lyco.Music-*-android-*.apk` | 直接侧载安装 |
+            | iOS | `Lyco.Music-*-ios-unsigned.ipa` | 未签名，需自行签名或用 AltStore 侧载 |
+            | Linux | `Lyco.Music-*-linux-*.AppImage` | chmod +x 后直接运行 |
 
             ### 会员与音源订阅
             1. 打开 https://lain42.top/shop/ 用积分购买「音乐会员 · 年卡」（¥88/年）

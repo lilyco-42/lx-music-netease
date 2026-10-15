@@ -226,11 +226,11 @@ Android 默认用模板自带的 debug keystore 签名（可直接安装）；
 
 | 平台 | 产物 | 说明 |
 |---|---|---|
-| Windows | `LX.Music-<版本>-windows-setup.exe` / `.msi` / `-x64-portable.exe` | 安装向导 / MSI 静默 / 免安装 |
-| macOS | `LX.Music-<版本>-macos-x64.dmg` / `-arm64.dmg` | ad-hoc 签名，首次打开需右键 → 打开 |
-| Linux | `LX.Music-<版本>-linux-x86_64.AppImage` | `chmod +x` 后直接运行 |
-| Android | `LX.Music-<版本>-android-universal.apk` | 侧载安装；正式密钥签名 |
-| iOS | `LX.Music-<版本>-ios-unsigned.ipa` | 未签名，需自行签名或用 AltStore 侧载 |
+| Windows | `Lyco.Music-<版本>-windows-setup.exe` / `.msi` / `-x64-portable.exe` | 安装向导 / MSI 静默 / 免安装 |
+| macOS | `Lyco.Music-<版本>-macos-x64.dmg` / `-arm64.dmg` | ad-hoc 签名，首次打开需右键 → 打开 |
+| Linux | `Lyco.Music-<版本>-linux-x86_64.AppImage` | `chmod +x` 后直接运行 |
+| Android | `Lyco.Music-<版本>-android-universal.apk` | 侧载安装；正式密钥签名 |
+| iOS | `Lyco.Music-<版本>-ios-unsigned.ipa` | 未签名，需自行签名或用 AltStore 侧载 |
 
 发布同时把产物同步到 `https://lain42.top/downloads/`（含 `SHA256SUMS.txt`），
 并幂等登记进下载页的 `manifest.json`。
