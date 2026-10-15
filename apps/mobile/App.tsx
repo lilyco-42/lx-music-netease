@@ -26,6 +26,8 @@ const TABS: { key: TabKey; label: string }[] = [
 
 export default function App() {
   const [tab, setTab] = useState<TabKey>('home')
+  /** 首页点歌单/频道时带过来的搜索词 */
+  const [seedKeyword, setSeedKeyword] = useState('')
 
   useEffect(() => {
     // 装配 @lxmn/platform-mobile：注入 AsyncStorage，加密走内核纯 JS 实现
@@ -44,9 +46,14 @@ export default function App() {
 
       <View style={styles.body}>
         {tab === 'home' ? (
-          <HomeScreen onOpenSearch={() => setTab('search')} />
+          <HomeScreen
+            onOpenSearch={kw => {
+              if (kw) setSeedKeyword(kw)
+              setTab('search')
+            }}
+          />
         ) : tab === 'search' ? (
-          <SearchScreen />
+          <SearchScreen initialKeyword={seedKeyword} />
         ) : tab === 'player' ? (
           <PlayerScreen />
         ) : (

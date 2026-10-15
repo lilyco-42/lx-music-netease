@@ -3,22 +3,23 @@
  *
  * 调 @lxmn/core 的 musicSearch（与桌面端同一份内核），点条目即播放。
  */
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native'
 import { getSource, type MusicItem } from '@lxmn/core'
 import { play, usePlayerState } from '../player'
 import { colors, topInset } from '../theme'
 
-export default function SearchScreen() {
-  const [keyword, setKeyword] = useState('')
+export default function SearchScreen({ initialKeyword }: { initialKeyword?: string }) {
+  const [keyword, setKeyword] = useState(initialKeyword ?? '')
   const [list, setList] = useState<MusicItem[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const st = usePlayerState()
 
-  const run = useCallback(async () => {
-    const q = keyword.trim()
+  /** 真正执行搜索。显式收 keyword，这样「首页带词跳进来」也能复用 */
+  const runWith = useCallback(async (raw: string) => {
+    const q = raw.trim()
     if (!q) return
     setLoading(true)
     setError('')
@@ -35,9 +36,24 @@ export default function SearchScreen() {
     } finally {
       setLoading(false)
     }
-  }, [keyword])
+  }, [])
+
+  const run = useCallback(() => void runWith(keyword), [keyword, runWith])
 
   const currentId = st.queue[st.index]?.songmid
+
+  /**
+   * 从首页带词跳进来时自动搜一次。
+   * 用 ref 记住上一次搜过的词，避免父组件重渲染时把用户手输的内容覆盖掉。
+   */
+  const lastSeed = useRef('')
+  useEffect(() => {
+    const q = (initialKeyword ?? '').trim()
+    if (!q || q === lastSeed.current) return
+    lastSeed.current = q
+    setKeyword(q)
+    void runWith(q)
+  }, [initialKeyword])
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: topInset }}>

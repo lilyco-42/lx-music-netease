@@ -7,7 +7,7 @@
  * 推荐歌单仍然只是版式占位：本站没有歌单数据源，不假装有。
  */
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, View } from 'react-native'
+import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, Text, View } from 'react-native'
 import { getSource, type MusicItem } from '@lxmn/core'
 import { Logo } from '../components/Icons'
 import { play, usePlayerState } from '../player'
@@ -33,12 +33,19 @@ const PLAYLISTS: Playlist[] = [
 /** 用几个覆盖面广的关键词拼出首页推荐；任何一个失败都不影响其它 */
 const SEED_KEYWORDS = ['热门', '华语流行', '轻音乐']
 
+/**
+ * 封面。有 uri 就真的把图显示出来 —— 之前这个分支渲染的是一个空 View，
+ * 等于所有能拿到封面的曲目反而看不到封面。加载失败时回落到几何占位。
+ */
 function CoverPlaceholder({ size, radius = 8, uri }: { size: number; radius?: number; uri?: string }) {
-  if (uri) {
+  const [failed, setFailed] = useState(false)
+  if (uri && !failed) {
     return (
-      <View style={{ width: size, height: size, borderRadius: radius, overflow: 'hidden', backgroundColor: colors.elevated }}>
-        <View style={{ flex: 1 }} />
-      </View>
+      <Image
+        source={{ uri }}
+        onError={() => setFailed(true)}
+        style={{ width: size, height: size, borderRadius: radius, backgroundColor: colors.elevated }}
+      />
     )
   }
   return (
@@ -65,7 +72,7 @@ function CoverPlaceholder({ size, radius = 8, uri }: { size: number; radius?: nu
   )
 }
 
-export default function HomeScreen({ onOpenSearch }: { onOpenSearch?: () => void }) {
+export default function HomeScreen({ onOpenSearch }: { onOpenSearch?: (keyword?: string) => void }) {
   const [tracks, setTracks] = useState<MusicItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -109,7 +116,8 @@ export default function HomeScreen({ onOpenSearch }: { onOpenSearch?: () => void
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 18 }}>
           <Logo size={34} />
           <Text style={{ color: colors.fg, fontSize: 21, fontWeight: '600', flex: 1 }}>LX Music</Text>
-          <Pressable onPress={onOpenSearch} hitSlop={10}>
+          {/* 不传关键词：这是「去搜索页」而不是「搜某个词」 */}
+          <Pressable onPress={() => onOpenSearch?.()} hitSlop={10}>
             <Text style={{ color: colors.accent, fontSize: 14 }}>搜索</Text>
           </Pressable>
         </View>
@@ -127,7 +135,7 @@ export default function HomeScreen({ onOpenSearch }: { onOpenSearch?: () => void
           keyExtractor={i => String(i.id)}
           contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
           renderItem={({ item }) => (
-            <Pressable style={{ width: 140 }}>
+            <Pressable style={{ width: 140 }} onPress={() => onOpenSearch?.(item.title)}>
               <CoverPlaceholder size={140} radius={8} />
               <Text numberOfLines={2} style={{ color: colors.fg, fontSize: 13, lineHeight: 18, marginTop: 8 }}>
                 {item.title}
@@ -163,7 +171,7 @@ export default function HomeScreen({ onOpenSearch }: { onOpenSearch?: () => void
                   style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9, gap: 12 }}
                 >
                   <Text style={{ color: colors.fainter, fontSize: 13, width: 18 }}>{idx + 1}</Text>
-                  <CoverPlaceholder size={48} radius={6} />
+                  <CoverPlaceholder size={48} radius={6} uri={typeof t.picUrl === 'string' ? t.picUrl : undefined} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text numberOfLines={1} style={{ color: active ? colors.accent : colors.fg, fontSize: 15 }}>
                       {t.name}
