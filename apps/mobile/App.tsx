@@ -12,15 +12,17 @@ import SearchScreen from './src/screens/SearchScreen'
 import PlayerScreen from './src/screens/PlayerScreen'
 import MembershipScreen from './src/screens/MembershipScreen'
 import SyncScreen from './src/screens/SyncScreen'
+import MyMusicScreen from './src/screens/MyMusicScreen'
 import { ensurePlatform } from './src/platform'
 import { setupPlayer, useTrackPlayerEvents } from './src/player'
 import { colors, TAB_BAR_HEIGHT, topInset } from './src/theme'
 
-type TabKey = 'home' | 'search' | 'player' | 'member' | 'sync'
+type TabKey = 'home' | 'search' | 'my' | 'player' | 'member' | 'sync'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'home', label: '首页' },
   { key: 'search', label: '搜索' },
+  { key: 'my', label: '我的' },
   { key: 'player', label: '播放器' },
   { key: 'member', label: '会员' },
   { key: 'sync', label: '同步' },
@@ -56,6 +58,8 @@ export default function App() {
           />
         ) : tab === 'search' ? (
           <SearchScreen initialKeyword={seedKeyword} />
+        ) : tab === 'my' ? (
+          <MyMusicScreen />
         ) : tab === 'player' ? (
           <PlayerScreen />
         ) : tab === 'member' ? (
@@ -94,5 +98,6 @@ const styles = StyleSheet.create({
   },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabIndicator: { width: 22, height: 3, borderRadius: 2, marginBottom: 6 },
-  tabLabel: { fontSize: 13 },
+  // 6 个标签在窄屏上要挤得下，字号比原来小 1px
+  tabLabel: { fontSize: 12 },
 })
