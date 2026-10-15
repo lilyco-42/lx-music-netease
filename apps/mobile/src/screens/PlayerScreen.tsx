@@ -2,26 +2,44 @@
  * 播放器页 —— 全屏黑胶 + 歌词 + 控制条
  * 实测规格：黑胶外圈直径 ~300，内圈 ~180；歌词区自下而上；
  * 播放按钮红色圆形 64px；底部功能行 4 个图标。
+ *
+ * 数据全部来自 src/player.ts（react-native-track-player + @lxmn/core），
+ * 没有写死的示例歌词；歌词由内核 parseLrc 解析、二分跟随进度高亮。
  */
-import { useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { FlatList, Image, Pressable, Text, View } from 'react-native'
 import {
   ChevronDownIcon, MoreIcon, HeartIcon, CommentIcon, ShareIcon, ListIcon,
   LoopIcon, ShuffleIcon, SkipIcon, PlayIcon, PauseIcon,
 } from '../components/Icons'
 import { colors, topInset } from '../theme'
+import {
+  currentItem, cycleQuality, next, prev, seek, toggle,
+  useLyricLines, usePlayerState, useProgressState,
+} from '../player'
 
-const LYRICS = [
-  { t: 0, text: '夜色把城市轻轻盖住' },
-  { t: 1, text: '我把耳机调到最舒服的音量' },
-  { t: 2, text: '这条路走了一千遍' },
-  { t: 3, text: '还是想再听一遍' },
-]
-const CURRENT = 1
+function fmt(t: number): string {
+  if (!Number.isFinite(t) || t < 0) t = 0
+  const m = Math.floor(t / 60)
+  const s = Math.floor(t % 60)
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
+}
 
 export default function PlayerScreen() {
-  const [playing, setPlaying] = useState(true)
-  const progress = 0.36
+  const st = usePlayerState()
+  const { position, duration, playing } = useProgressState()
+  const { lines, activeIndex } = useLyricLines()
+  const item = currentItem()
+  const listRef = useRef<FlatList>(null)
+
+  const progress = duration > 0 ? Math.min(1, position / duration) : 0
+
+  // 当前行滚到中间：按固定行高估算，比 measure 更省事也更稳
+  const LINE_H = 46
+  useEffect(() => {
+    if (activeIndex < 0) return
+    listRef.current?.scrollToOffset({ offset: Math.max(0, (activeIndex - 2) * LINE_H), animated: true })
+  }, [activeIndex])
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: topInset }}>
@@ -32,10 +50,10 @@ export default function PlayerScreen() {
         </Pressable>
         <View style={{ alignItems: 'center', flex: 1, marginHorizontal: 12 }}>
           <Text numberOfLines={1} style={{ color: colors.fg, fontSize: 16, fontWeight: '600' }}>
-            城市夜航
+            {item?.name ?? '未在播放'}
           </Text>
           <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 12, marginTop: 3 }}>
-            林一 / 陈默
+            {item?.singer ?? '—'}
           </Text>
         </View>
         <Pressable hitSlop={12}>
@@ -71,13 +89,18 @@ export default function PlayerScreen() {
               justifyContent: 'center',
               borderWidth: 3,
               borderColor: colors.accent,
+              overflow: 'hidden',
             }}
           >
-            <View style={{ flexDirection: 'row', gap: 5, alignItems: 'flex-end' }}>
-              {[0.45, 0.75, 0.6].map((h, i) => (
-                <View key={i} style={{ width: 6, height: 70 * h, borderRadius: 3, backgroundColor: colors.fg }} />
-              ))}
-            </View>
+            {st.picUrl ? (
+              <Image source={{ uri: st.picUrl }} style={{ width: 180, height: 180 }} />
+            ) : (
+              <View style={{ flexDirection: 'row', gap: 5, alignItems: 'flex-end' }}>
+                {[0.45, 0.75, 0.6].map((h, i) => (
+                  <View key={i} style={{ width: 6, height: 70 * h, borderRadius: 3, backgroundColor: colors.fg }} />
+                ))}
+              </View>
+            )}
           </View>
           {/* 中心轴 */}
           <View style={{ position: 'absolute', width: 14, height: 14, borderRadius: 7, backgroundColor: colors.bg }} />
@@ -97,28 +120,67 @@ export default function PlayerScreen() {
         />
       </View>
 
-      {/* 歌词 */}
-      <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 32, marginTop: 20 }}>
-        {LYRICS.map((l, i) => {
-          const active = i === CURRENT
-          const distance = Math.abs(i - CURRENT)
-          return (
-            <Text
-              key={l.t}
-              numberOfLines={1}
-              style={{
-                color: active ? colors.accent : colors.muted,
-                fontSize: active ? 18 : 15,
-                fontWeight: active ? '600' : '400',
-                textAlign: 'center',
-                marginVertical: 7,
-                opacity: distance === 0 ? 1 : distance === 1 ? 0.7 : 0.4,
-              }}
-            >
-              {l.text}
+      {/* 状态提示：加载中 / 错误 / 音质 */}
+      {(st.loading || st.error) && (
+        <View style={{ alignItems: 'center', marginTop: 10 }}>
+          <Text numberOfLines={1} style={{ color: st.error ? colors.accent : colors.muted, fontSize: 13, paddingHorizontal: 24 }}>
+            {st.loading ? '正在获取播放地址…' : st.error}
+          </Text>
+        </View>
+      )}
+
+      {/* 歌词：自下而上，点行可跳转 */}
+      <View style={{ flex: 1, marginTop: 14 }}>
+        {lines.length ? (
+          <FlatList
+            ref={listRef}
+            data={lines}
+            keyExtractor={(_, i) => String(i)}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 32, paddingVertical: 60 }}
+            renderItem={({ item: line, index }) => {
+              const active = index === activeIndex
+              const distance = Math.abs(index - activeIndex)
+              return (
+                <Pressable onPress={() => void seek(line.time)}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: active ? colors.accent : colors.muted,
+                      fontSize: active ? 18 : 15,
+                      fontWeight: active ? '600' : '400',
+                      textAlign: 'center',
+                      marginVertical: 7,
+                      opacity: distance === 0 ? 1 : distance <= 2 ? 0.7 : 0.35,
+                    }}
+                  >
+                    {line.text || '·'}
+                  </Text>
+                  {!!line.translation && (
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        color: active ? colors.muted : colors.fainter,
+                        fontSize: 13,
+                        textAlign: 'center',
+                        marginBottom: 6,
+                        opacity: distance <= 2 ? 0.9 : 0.4,
+                      }}
+                    >
+                      {line.translation}
+                    </Text>
+                  )}
+                </Pressable>
+              )
+            }}
+          />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: colors.fainter, fontSize: 14 }}>
+              {st.lyric ? '歌词解析中…' : '暂无歌词'}
             </Text>
-          )
-        })}
+          </View>
+        )}
       </View>
 
       {/* 进度条 */}
@@ -127,21 +189,22 @@ export default function PlayerScreen() {
           <View style={{ width: `${progress * 100}%`, height: '100%', backgroundColor: colors.accent }} />
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 7 }}>
-          <Text style={{ color: colors.fainter, fontSize: 11 }}>01:42</Text>
-          <Text style={{ color: colors.fainter, fontSize: 11 }}>04:38</Text>
+          <Text style={{ color: colors.fainter, fontSize: 11 }}>{fmt(position)}</Text>
+          <Text style={{ color: colors.fainter, fontSize: 11 }}>{fmt(duration)}</Text>
         </View>
       </View>
 
       {/* 控制条 */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 36, marginTop: 16 }}>
-        <Pressable hitSlop={10}>
-          <ShuffleIcon size={20} />
+        <Pressable hitSlop={10} onPress={cycleQuality}>
+          <Text style={{ color: colors.muted, fontSize: 12 }}>{st.quality}</Text>
         </Pressable>
-        <Pressable hitSlop={10}>
+        <Pressable hitSlop={10} onPress={() => void prev()} disabled={!st.queue.length}>
           <SkipIcon size={24} direction="prev" />
         </Pressable>
         <Pressable
-          onPress={() => setPlaying(p => !p)}
+          onPress={() => void toggle()}
+          disabled={st.loading || !item}
           style={{
             width: 64,
             height: 64,
@@ -149,11 +212,12 @@ export default function PlayerScreen() {
             backgroundColor: colors.accent,
             alignItems: 'center',
             justifyContent: 'center',
+            opacity: st.loading || !item ? 0.5 : 1,
           }}
         >
           {playing ? <PauseIcon size={24} /> : <PlayIcon size={24} />}
         </Pressable>
-        <Pressable hitSlop={10}>
+        <Pressable hitSlop={10} onPress={() => void next()} disabled={!st.queue.length}>
           <SkipIcon size={24} direction="next" />
         </Pressable>
         <Pressable hitSlop={10}>

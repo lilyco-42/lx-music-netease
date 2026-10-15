@@ -1,0 +1,111 @@
+/**
+ * 搜索页 —— 真正能听歌的入口。
+ *
+ * 调 @lxmn/core 的 musicSearch（与桌面端同一份内核），点条目即播放。
+ */
+import { useCallback, useState } from 'react'
+import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native'
+import { getSource, type MusicItem } from '@lxmn/core'
+import { play, usePlayerState } from '../player'
+import { colors, topInset } from '../theme'
+
+export default function SearchScreen() {
+  const [keyword, setKeyword] = useState('')
+  const [list, setList] = useState<MusicItem[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const st = usePlayerState()
+
+  const run = useCallback(async () => {
+    const q = keyword.trim()
+    if (!q) return
+    setLoading(true)
+    setError('')
+    setList([])
+    setTotal(0)
+    try {
+      const source = getSource('wy')
+      if (!source.musicSearch) throw new Error('当前音源不支持搜索')
+      const r = await source.musicSearch(q, 1, 30)
+      setList(r.list)
+      setTotal(r.total)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }, [keyword])
+
+  const currentId = st.queue[st.index]?.songmid
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: topInset }}>
+      {/* 搜索框 */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingVertical: 12 }}>
+        <TextInput
+          value={keyword}
+          onChangeText={setKeyword}
+          onSubmitEditing={run}
+          returnKeyType="search"
+          placeholder="搜索歌曲、歌手"
+          placeholderTextColor={colors.fainter}
+          style={{
+            flex: 1,
+            height: 40,
+            borderRadius: 20,
+            paddingHorizontal: 16,
+            backgroundColor: colors.surface,
+            color: colors.fg,
+            fontSize: 15,
+          }}
+        />
+        <Pressable onPress={run} hitSlop={10}>
+          <Text style={{ color: colors.accent, fontSize: 15 }}>搜索</Text>
+        </Pressable>
+      </View>
+
+      {loading ? (
+        <View style={{ paddingTop: 40, alignItems: 'center' }}>
+          <ActivityIndicator color={colors.accent} />
+        </View>
+      ) : error ? (
+        <Text style={{ color: colors.accent, paddingHorizontal: 20, fontSize: 14 }}>{error}</Text>
+      ) : !list.length ? (
+        <Text style={{ color: colors.fainter, paddingHorizontal: 20, fontSize: 14 }}>
+          {keyword.trim() ? '没有找到相关歌曲' : '输入关键词后回车搜索'}
+        </Text>
+      ) : (
+        <FlatList
+          data={list}
+          keyExtractor={i => i.source + '-' + i.songmid}
+          ListHeaderComponent={
+            <Text style={{ color: colors.fainter, fontSize: 12, paddingHorizontal: 20, paddingBottom: 8 }}>
+              共 {total} 首
+            </Text>
+          }
+          renderItem={({ item, index }) => {
+            const active = item.songmid === currentId
+            return (
+              <Pressable
+                onPress={() => void play(item, list)}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 12 }}
+              >
+                <Text style={{ color: colors.fainter, fontSize: 13, width: 20 }}>{index + 1}</Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text numberOfLines={1} style={{ color: active ? colors.accent : colors.fg, fontSize: 15 }}>
+                    {item.name}
+                  </Text>
+                  <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 12, marginTop: 3 }}>
+                    {item.singer}{item.albumName ? ' · ' + item.albumName : ''}
+                  </Text>
+                </View>
+                <Text style={{ color: colors.fainter, fontSize: 11 }}>{item.source.toUpperCase()}</Text>
+              </Pressable>
+            )
+          }}
+        />
+      )}
+    </View>
+  )
+}

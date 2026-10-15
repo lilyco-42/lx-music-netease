@@ -26,14 +26,21 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
+	  <!-- 第三方音源里有相当一部分只提供 http 直链（kuwo 的 antiserver、
+	       migu 的 app.c.nf.migu.cn 等），ATS 默认会直接拦掉，表现为
+	       「搜得到歌、点了没声音」。该 ipa 是未签名侧载包、不上架 App Store，
+	       所以这里放开是必要取舍。 -->
 		<key>NSAllowsArbitraryLoads</key>
-		<false/>
+		<true/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

@@ -1,9 +1,16 @@
 /**
  * 首页 —— 网易云风格布局（不含任何网易商标/图形资产）
- * 结构：顶栏（Logo + 标题）→ 推荐歌单横向卡片 → 猜你喜欢列表
+ * 结构：顶栏（Logo + 标题 + 搜索入口）→ 热门推荐 → 猜你喜欢（真实搜索结果）
+ *
+ * 「猜你喜欢」之前是 8 条写死的假数据（城市夜航 / 林一 / 128 万播放），
+ * 现在改成用几个热门关键词去内核里搜真实歌曲，点了就能播。
+ * 推荐歌单仍然只是版式占位：本站没有歌单数据源，不假装有。
  */
-import { ScrollView, Text, View, Pressable, FlatList } from 'react-native'
+import { useEffect, useState } from 'react'
+import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, View } from 'react-native'
+import { getSource, type MusicItem } from '@lxmn/core'
 import { Logo } from '../components/Icons'
+import { play, usePlayerState } from '../player'
 import { colors, topInset } from '../theme'
 
 interface Playlist {
@@ -23,25 +30,17 @@ const PLAYLISTS: Playlist[] = [
   { id: 7, title: '经典摇滚', count: '45 首' },
 ]
 
-interface Track {
-  id: number
-  title: string
-  artist: string
-  plays: string
-}
+/** 用几个覆盖面广的关键词拼出首页推荐；任何一个失败都不影响其它 */
+const SEED_KEYWORDS = ['热门', '华语流行', '轻音乐']
 
-const TRACKS: Track[] = [
-  { id: 1, title: '城市夜航', artist: '林一 / 陈默', plays: '128 万' },
-  { id: 2, title: '雨后的窗台', artist: '苏晚', plays: '96 万' },
-  { id: 3, title: '远方的信号', artist: 'Northbound', plays: '88 万' },
-  { id: 4, title: '旧磁带', artist: '周与南', plays: '75 万' },
-  { id: 5, title: '凌晨四点', artist: '夜行者', plays: '64 万' },
-  { id: 6, title: '海边的信', artist: '蓝调小组', plays: '59 万' },
-  { id: 7, title: '回到那天', artist: '许青', plays: '51 万' },
-  { id: 8, title: '光影之间', artist: 'Mono Lake', plays: '43 万' },
-]
-
-function CoverPlaceholder({ size, radius = 8 }: { size: number; radius?: number }) {
+function CoverPlaceholder({ size, radius = 8, uri }: { size: number; radius?: number; uri?: string }) {
+  if (uri) {
+    return (
+      <View style={{ width: size, height: size, borderRadius: radius, overflow: 'hidden', backgroundColor: colors.elevated }}>
+        <View style={{ flex: 1 }} />
+      </View>
+    )
+  }
   return (
     <View
       style={{
@@ -66,14 +65,53 @@ function CoverPlaceholder({ size, radius = 8 }: { size: number; radius?: number 
   )
 }
 
-export default function HomeScreen() {
+export default function HomeScreen({ onOpenSearch }: { onOpenSearch?: () => void }) {
+  const [tracks, setTracks] = useState<MusicItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const st = usePlayerState()
+  const currentId = st.queue[st.index]?.songmid
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const source = getSource('wy')
+        if (!source.musicSearch) throw new Error('当前音源不支持搜索')
+        const results = await Promise.all(
+          SEED_KEYWORDS.map(k => source.musicSearch!(k, 1, 10).catch(() => null)),
+        )
+        if (!alive) return
+        const seen = new Set<string>()
+        const merged: MusicItem[] = []
+        for (const r of results) {
+          for (const it of r?.list ?? []) {
+            const key = it.source + '-' + it.songmid
+            if (seen.has(key)) continue
+            seen.add(key)
+            merged.push(it)
+          }
+        }
+        setTracks(merged.slice(0, 20))
+      } catch (e) {
+        if (alive) setError(e instanceof Error ? e.message : String(e))
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => { alive = false }
+  }, [])
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: topInset }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
         {/* 顶栏 */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 18 }}>
           <Logo size={34} />
-          <Text style={{ color: colors.fg, fontSize: 21, fontWeight: '600' }}>LX Music</Text>
+          <Text style={{ color: colors.fg, fontSize: 21, fontWeight: '600', flex: 1 }}>LX Music</Text>
+          <Pressable onPress={onOpenSearch} hitSlop={10}>
+            <Text style={{ color: colors.accent, fontSize: 14 }}>搜索</Text>
+          </Pressable>
         </View>
 
         {/* 推荐歌单 */}
@@ -99,36 +137,47 @@ export default function HomeScreen() {
           )}
         />
 
-        {/* 猜你喜欢 */}
+        {/* 猜你喜欢：真实搜索结果 */}
         <View style={{ paddingHorizontal: 20, marginTop: 26, marginBottom: 10 }}>
           <Text style={{ color: colors.fg, fontSize: 17, fontWeight: '600' }}>猜你喜欢</Text>
         </View>
 
-        <View style={{ paddingHorizontal: 20 }}>
-          {TRACKS.map((t, idx) => (
-            <Pressable
-              key={t.id}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 9,
-                gap: 12,
-              }}
-            >
-              <Text style={{ color: colors.fainter, fontSize: 13, width: 18 }}>{idx + 1}</Text>
-              <CoverPlaceholder size={48} radius={6} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text numberOfLines={1} style={{ color: colors.fg, fontSize: 15 }}>
-                  {t.title}
-                </Text>
-                <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 12, marginTop: 3 }}>
-                  {t.artist}
-                </Text>
-              </View>
-              <Text style={{ color: colors.fainter, fontSize: 12 }}>{t.plays}</Text>
-            </Pressable>
-          ))}
-        </View>
+        {loading ? (
+          <View style={{ paddingVertical: 30, alignItems: 'center' }}>
+            <ActivityIndicator color={colors.accent} />
+          </View>
+        ) : error ? (
+          <Text style={{ color: colors.accent, paddingHorizontal: 20, fontSize: 13 }}>{error}</Text>
+        ) : !tracks.length ? (
+          <Text style={{ color: colors.fainter, paddingHorizontal: 20, fontSize: 13 }}>
+            暂时拿不到推荐，去搜索页试试
+          </Text>
+        ) : (
+          <View style={{ paddingHorizontal: 20 }}>
+            {tracks.map((t, idx) => {
+              const active = t.songmid === currentId
+              return (
+                <Pressable
+                  key={t.source + '-' + t.songmid + '-' + idx}
+                  onPress={() => void play(t, tracks)}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9, gap: 12 }}
+                >
+                  <Text style={{ color: colors.fainter, fontSize: 13, width: 18 }}>{idx + 1}</Text>
+                  <CoverPlaceholder size={48} radius={6} />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={1} style={{ color: active ? colors.accent : colors.fg, fontSize: 15 }}>
+                      {t.name}
+                    </Text>
+                    <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 12, marginTop: 3 }}>
+                      {t.singer}
+                    </Text>
+                  </View>
+                  <Text style={{ color: colors.fainter, fontSize: 11 }}>{t.source.toUpperCase()}</Text>
+                </Pressable>
+              )
+            })}
+          </View>
+        )}
       </ScrollView>
     </View>
   )
