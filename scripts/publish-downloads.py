@@ -68,6 +68,7 @@ def entry(fn, platform, plat_label, arch_note):
 
 win = pick('windows-setup.exe')
 msi = pick('windows-x64.msi')
+portable = pick('windows-x64-portable.exe')
 dmg_arm = pick('macos-arm64.dmg')
 dmg_x64 = pick('macos-x64.dmg')
 apk = pick('android') or pick('.apk')
@@ -75,7 +76,7 @@ ipa = pick('ios-unsigned.ipa') or pick('unsigned.ipa')
 appimg = pick('linux-x86_64.AppImage')
 
 print('stage', stage)
-print('win', win, '| msi', msi, '| dmg_arm', dmg_arm, '| dmg_x64', dmg_x64)
+print('win', win, '| msi', msi, '| portable', portable, '| dmg_arm', dmg_arm, '| dmg_x64', dmg_x64)
 print('apk', apk, '| ipa', ipa, '| appimg', appimg)
 
 # 版本号从 tag 里取：v0.1.0-20261015 -> 0.1.0；取不到就退回 tag 本身
@@ -97,6 +98,13 @@ if win:
         summary='网易云音乐风格的开源音乐播放器；桌面端与移动端共用同一套音源内核，支持导入订阅链接一键补全第三方音源。',
         category='媒体工具', platforms=['windows'],
         mirror=entry(win, 'win', 'Windows x64 · 安装版', ''),
+        **common))
+if portable:
+    items.append(dict(id='lx-music-windows-portable', name='LX Music（Windows 便携版）',
+        summary='网易云音乐风格的开源音乐播放器，Windows 免安装便携版，解压即用，不写注册表。',
+        category='媒体工具', platforms=['windows'],
+        mirror=entry(portable, 'win', 'Windows x64 · 免安装便携版', ''),
+        note='便携版不需要安装，双击即可运行；数据与配置保存在程序所在目录。适合放在 U 盘里随身携带。',
         **common))
 if dmg_arm:
     items.append(dict(id='lx-music-macos', name='LX Music（macOS）',
@@ -120,15 +128,15 @@ if appimg:
         install='chmod +x LX.Music-*.AppImage && ./LX.Music-*.AppImage',
         **common))
 if ipa:
-    p = os.path.join(stage, ipa)
+    # iOS 条目必须和其他平台一样填 mirror。
+    # 之前这里用的是 download_url + 手写的 channel/official，下载页只认 mirror，
+    # 结果 iOS 卡片渲染成「file: None」，明明服务器上 4.1MB 的 ipa 已经传上去了。
     items.append(dict(id='lx-music-ios', name='LX Music（iOS）',
         summary='网易云音乐风格的开源音乐播放器 iOS 版。安装包未签名，需要自行签名或使用 AltStore / SideStore 侧载。',
         category='媒体工具', platforms=['ios'],
-        channel='开发者测试',
-        download_url=base_url + '/' + ipa,
-        official=REPO,
-        license='Apache-2.0', repository=REPO, version=ver,
-        note='这是未签名 IPA，不能直接双击安装。可用 AltStore / SideStore / TrollStore 侧载，或用你自己的开发者证书重签后再装。'))
+        mirror=entry(ipa, 'ios', 'iOS · 未签名 IPA', ''),
+        note='这是未签名 IPA，不能直接双击安装。可用 AltStore / SideStore / TrollStore 侧载，或用你自己的开发者证书重签后再装。',
+        **common))
 
 man = json.load(open(MAN, encoding='utf-8'))
 old_ids = {i['id'] for i in man['items']}

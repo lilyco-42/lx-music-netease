@@ -299,6 +299,24 @@ jobs:
           ssh -i ~/.ssh/id_lain42 root@lain42.top \
             "python3 /tmp/publish-downloads.py '${{ steps.tag.outputs.name }}'"
 
+      # 同一天重复发布时 tag 相同（v0.1.0-YYYYMMDD），而 action-gh-release
+      # 在 tag 已存在时是**追加**资产而不是重建，上一轮的文件会残留
+      # （实测残留了旧命名的 app-release.apk / LX-Music-unsigned.ipa，
+      #   因为改名发生在 01:04 之后，旧的仍挂在同一个 release 上）。
+      # 这里先删掉同名 release，保证每次发布的结果只含本轮产物。
+      - name: Drop previous release with same tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG='${{ steps.tag.outputs.name }}'
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "deleting existing release $TAG (same-day rerun)"
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          else
+            echo "no existing release for $TAG"
+          fi
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
@@ -315,7 +333,8 @@ jobs:
             ### 下载
             | 平台 | 文件 | 说明 |
             | --- | --- | --- |
-            | Windows | `LX.Music-*-windows-setup.exe` / `*.msi` | 安装版；另有 portable 免安装 |
+            | Windows | `LX.Music-*-windows-setup.exe` / `*.msi` | 安装版（NSIS 向导 / MSI 静默） |
+            | Windows 便携 | `LX.Music-*-windows-x64-portable.exe` | 免安装，双击即用 |
             | macOS | `LX.Music-*-macos-*.dmg` | 未签名，首次打开请右键 → 打开 |
             | Android | `LX.Music-*-android-*.apk` | 直接侧载安装 |
             | iOS | `LX.Music-*-ios-unsigned.ipa` | 未签名，需自行签名或用 AltStore 侧载 |

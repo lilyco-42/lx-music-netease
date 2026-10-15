@@ -46,6 +46,15 @@ msi:
   shortcutName: LX Music
   artifactName: LX.Music-${version}-windows-${arch}.msi
 
+# portable 必须单独写 artifactName。
+# 不写的话它会回退到 win.artifactName（LX.Music-<ver>-windows-<arch>.${ext}），
+# 与上面的 msi 规则求值后**同名**，便携版 exe 会直接覆盖刚打好的 msi。
+# 实测证据：服务器上 LX.Music-0.1.0-windows-x64.msi 的首字节是 4d5a（MZ，PE 可执行），
+# 而真正的 MSI 是 OLE2 复合文档，必须以 d0cf11e0 开头。
+# CI 日志也印证了：building target=portable file=release\LX.Music-0.1.0-windows-x64.msi
+portable:
+  artifactName: LX.Music-${version}-windows-${arch}-portable.${ext}
+
 nsis:
   oneClick: false
   perMachine: false
