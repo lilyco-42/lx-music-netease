@@ -7,7 +7,19 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { installMobilePlatform } from '@lxmn/platform-mobile'
-import type { StorageAdapter } from '@lxmn/core'
+import {
+  installWySource,
+  installKwSource,
+  hasSource,
+  type SourceId,
+  type StorageAdapter,
+} from '@lxmn/core'
+
+/** 内核里已经移植完成的音源（与桌面端保持同一份清单） */
+const BUILTIN: { id: SourceId; install: () => void }[] = [
+  { id: 'wy', install: installWySource },
+  { id: 'kw', install: installKwSource },
+]
 
 /** 把 AsyncStorage 适配成内核的 StorageAdapter */
 const storage: StorageAdapter = {
@@ -31,7 +43,10 @@ let installed = false
 export function ensurePlatform() {
   if (installed) return
   installMobilePlatform({ storage })
+  for (const s of BUILTIN) {
+    if (!hasSource(s.id)) s.install()
+  }
   installed = true
 }
 
-export { storage }
+export { storage, BUILTIN }

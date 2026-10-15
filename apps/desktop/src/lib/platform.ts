@@ -15,6 +15,7 @@ import {
   createFetchHttp,
   createWebStorage,
   setPlatform,
+  installKwSource,
   installWySource,
   hasSource,
   type HttpAdapter,
@@ -76,6 +77,7 @@ let done = false
 /** 内核里已经移植完成的音源 */
 const BUILTIN: { id: SourceId; install: () => void }[] = [
   { id: 'wy', install: installWySource },
+  { id: 'kw', install: installKwSource },
 ]
 
 export function ensureDesktopPlatform(): void {
