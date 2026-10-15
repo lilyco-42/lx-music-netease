@@ -113,7 +113,11 @@ const ROUTE_HIGHLIGHT: Record<string, string> = { membership: 'membership', sync
         v-for="item in navMine"
         :key="item.key"
         type="button"
-        class="mx-[30px] flex h-[49px] w-[206px] items-center gap-3 rounded-nav px-3.5 text-left text-[17px] leading-6 text-ncm-muted transition-colors hover:bg-black/5"
+        class="mx-[30px] flex h-[49px] w-[206px] items-center gap-3 rounded-nav px-3.5 text-left text-[17px] leading-6 transition-colors"
+        :class="route.name === 'my' && item.key === 'like'
+          ? 'bg-ncm-accent-nav text-white'
+          : 'text-ncm-muted hover:bg-black/5'"
+        @click="item.key === 'like' || item.key === 'recent' ? router.push({ name: 'my' }) : undefined"
       >
         <span class="size-[18px] shrink-0 rounded-[3px] border-[1.5px] border-current opacity-70" />
         <span>{{ item.label }}</span>
