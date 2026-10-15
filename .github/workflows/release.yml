@@ -163,7 +163,19 @@ jobs:
         shell: bash
         run: |
           mkdir -p out
+          # 统一命名：gradle 产出叫 app-release.apk，在 GitHub Release 里看不出是哪个
+          # 项目/版本/架构，下载页也无法展示版本号，这里重命名成与 exe/msi/dmg 同一套规则。
           find apps/mobile/android -name '*.apk' -exec cp {} out/ \;
+          for f in out/*.apk; do
+            [ -e "$f" ] || continue
+            case "$f" in
+              *-universal.apk) suffix=universal ;;
+              *-arm64-v8a.apk) suffix=arm64-v8a ;;
+              *-armeabi-v7a.apk) suffix=armeabi-v7a ;;
+              *) suffix=universal ;;
+            esac
+            mv "$f" "out/LX.Music-0.1.0-android-${suffix}.apk"
+          done
           ls -la out
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
@@ -205,13 +217,15 @@ jobs:
         run: |
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/LXMusic.app Payload/
-          zip -qry ../LX-Music-unsigned.ipa Payload
-          ls -la ../LX-Music-unsigned.ipa
+          # 与 exe/msi/dmg/apk 统一命名，下载页才能显示版本号；
+          # 该 ipa 未签名，文件名保留 unsigned 以免用户误以为可直接安装。
+          zip -qry ../LX.Music-0.1.0-ios-unsigned.ipa Payload
+          ls -la ../LX.Music-0.1.0-ios-unsigned.ipa
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: lxmn-ios
-          path: apps/mobile/LX-Music-unsigned.ipa
+          path: apps/mobile/LX.Music-0.1.0-ios-unsigned.ipa
           if-no-files-found: warn
           retention-days: 14
 
