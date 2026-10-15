@@ -21,12 +21,30 @@
  * doSignAfterPack 在第 251 行。identity 为 null 时后者什么都不做，
  * 因此这里签好的签名不会被覆盖。
  */
-const { execFileSync } = require('node:child_process')
+const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 const fs = require('node:fs')
 
+/**
+ * 跑一个命令并同时拿到 stdout 与 stderr。
+ *
+ * 用 spawnSync 而不是 execFileSync：后者只返回 stdout，而 codesign
+ * 的 --display / --verify 结果全部写在 **stderr** 上。早期版本用
+ * execFileSync 导致「Signature=」后面永远是空的 —— 日志看着像成功了，
+ * 其实什么都没打印出来，等于没有证据。
+ */
 function run(cmd, args) {
-  return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  const r = spawnSync(cmd, args, { encoding: 'utf8' })
+  if (r.error) throw r.error
+  return { code: r.status, out: r.stdout || '', err: r.stderr || '' }
+}
+
+function must(cmd, args) {
+  const r = run(cmd, args)
+  if (r.code !== 0) {
+    throw new Error(cmd + ' ' + args.join(' ') + ' 失败（exit ' + r.code + '）:\n' + r.err)
+  }
+  return r
 }
 
 exports.default = async function afterPack(context) {
@@ -40,26 +58,42 @@ exports.default = async function afterPack(context) {
     throw new Error('afterPack: 找不到 .app，路径为 ' + appPath)
   }
 
-  // 先递归去掉打包过程可能留下的扩展属性。xattr 变化会让签名失效，
+  // 先递归清掉扩展属性。xattr 变化会让签名失效，
   // 而 electron-builder 复制文件时可能带上 com.apple.quarantine 之类。
-  try {
-    run('xattr', ['-cr', appPath])
-  } catch {
-    // xattr 失败不致命（比如文件系统不支持），继续签名
+  const x = run('xattr', ['-cr', appPath])
+  if (x.code !== 0) {
+    // 不致命（比如文件系统不支持 xattr），但要说出来
+    console.log('[after-pack] xattr -cr 跳过（exit ' + x.code + '）: ' + x.err.trim().slice(0, 200))
   }
 
   // ad-hoc 签名：--sign - 表示不做证书链验证的匿名签名。
   // --force 覆盖打包过程中可能已存在的签名；--deep 一并签内嵌的
   // framework / helper（Electron 有很多个），否则外层签名会因为
   // 内层未签而校验失败。
-  run('codesign', ['--force', '--deep', '--sign', '-', appPath])
+  must('codesign', ['--force', '--deep', '--sign', '-', appPath])
 
   // 立刻校验，别把坏包发出去。--strict 会检查 bundle 结构与资源封印，
   // 这是「签名是否真的可用」唯一可信的判据。
-  run('codesign', ['--verify', '--deep', '--strict', '--verbose=2', appPath])
+  const v = must('codesign', ['--verify', '--deep', '--strict', '--verbose=2', appPath])
 
-  // 打印签名摘要，便于在 CI 日志里确认真的签上了（而不是静默跳过）
-  const info = run('codesign', ['--display', '--verbose=2', appPath])
-  const line = info.split('\n').find(l => l.includes('Signature=')) || info.split('\n')[0]
-  console.log('[after-pack] ad-hoc signed ' + appName + ' -> ' + String(line).trim())
+  // 读出真实签名信息作为证据。--display 的输出在 stderr 上。
+  const d = must('codesign', ['--display', '--verbose=2', appPath])
+  const text = d.err + d.out
+  const sig = (text.split('\n').find(l => /Signature=/.test(l)) || '').trim()
+  const ident = (text.split('\n').find(l => /^Identifier=/.test(l)) || '').trim()
+  const cd = (text.split('\n').find(l => /^CDHash=/.test(l)) || '').trim()
+
+  // ad-hoc 签名的 Signature 就是 "adhoc"。如果不是，说明根本没签上，
+  // 这时候宁可让构建失败，也不要发一个在 Apple Silicon 上打不开的包。
+  if (!/Signature=adhoc/.test(sig)) {
+    throw new Error('afterPack: 期望 ad-hoc 签名，实际是 ' + (sig || '(空)'))
+  }
+
+  console.log('[after-pack] ad-hoc signed ' + appName)
+  console.log('[after-pack]   ' + sig)
+  if (ident) console.log('[after-pack]   ' + ident)
+  if (cd) console.log('[after-pack]   ' + cd)
+  if (v.err.trim()) {
+    for (const l of v.err.trim().split('\n').slice(0, 6)) console.log('[after-pack]   verify: ' + l.trim())
+  }
 }
