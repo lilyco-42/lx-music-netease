@@ -5,9 +5,10 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { FlatList, Pressable, Text, View } from 'react-native'
-import type { MusicItem } from '@lxmn/core'
+import type { MusicItem, SourceId } from '@lxmn/core'
 import { play, usePlayerState } from '../player'
 import { library } from '../sync'
+import { getShared } from '../share'
 import { colors, topInset } from '../theme'
 
 type Tab = 'fav' | 'recent'
@@ -37,6 +38,32 @@ export default function MyMusicScreen() {
     void library.load().then(pull)
   }, [pull])
 
+  // 分享导入：好友页「导入」按钮把码放在全局（RN 无 sessionStorage）
+  const [importPrompt, setImportPrompt] = useState<{ code: string; name: string; count: number } | null>(null)
+  useEffect(() => {
+    const g = globalThis as { __lycoImportShare?: string }
+    const code = g.__lycoImportShare
+    if (!code) return
+    delete g.__lycoImportShare
+    void (async () => {
+      const s = await getShared(code)
+      if (s) setImportPrompt({ code, name: s.name, count: s.trackCount })
+    })()
+  }, [])
+
+  async function confirmImport() {
+    const pr = importPrompt
+    if (!pr) return
+    const s = await getShared(pr.code)
+    if (!s) { setImportPrompt(null); return }
+    const pl = await library.createPlaylist(s.name || '导入的歌单')
+    for (const t of s.tracks) {
+      await library.addToPlaylist(pl.id, { ...t, id: t.songmid, source: t.source as SourceId })
+    }
+    setImportPrompt(null)
+    pull()
+  }
+
   async function unfav(item: MusicItem) {
     await library.removeFavorite(item)
     pull()
@@ -57,7 +84,27 @@ export default function MyMusicScreen() {
   const currentId = st.queue[st.index]?.songmid
 
   return (
+
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: topInset }}>
+{importPrompt ? (
+        <View style={{
+          marginHorizontal: 16, marginTop: 8, padding: 12, borderRadius: 12,
+          backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.accent,
+          flexDirection: 'row', alignItems: 'center', gap: 10,
+        }}>
+          <Text style={{ color: colors.fg, fontSize: 13, flex: 1 }} numberOfLines={1}>
+            导入「{importPrompt.name}」（{importPrompt.count} 首）？
+          </Text>
+          <Pressable onPress={() => { void confirmImport() }}
+            style={{ backgroundColor: colors.accent, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 }}>
+            <Text style={{ color: '#fff', fontSize: 12 }}>导入</Text>
+          </Pressable>
+          <Pressable onPress={() => setImportPrompt(null)}
+            style={{ borderWidth: 1, borderColor: colors.divider, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 }}>
+            <Text style={{ color: colors.muted, fontSize: 12 }}>取消</Text>
+          </Pressable>
+        </View>
+      ) : null}
       <Text style={{ color: colors.fg, fontSize: 22, fontWeight: '700', paddingHorizontal: 20, paddingTop: 12 }}>
         我的音乐
       </Text>

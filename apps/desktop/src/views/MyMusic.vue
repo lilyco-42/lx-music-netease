@@ -5,15 +5,51 @@
  * 曲库是内核级的，桌面端与移动端读的是同一份数据 —— 在这里看到的就是
  * 同步过去的内容。
  */
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { usePlayer } from '@/lib/player'
 import { useSync } from '@/lib/sync'
-import type { MusicItem } from '@lxmn/core'
+import { useSharing, type ShareTrack } from '@/lib/share'
+import type { MusicItem, SourceId } from '@lxmn/core'
 
 const { library, favorites, history, playlists } = useSync()
 const player = usePlayer()
+const { getShared } = useSharing()
 
 const tab = ref<'fav' | 'recent'>('fav')
+
+// —— 分享导入：好友页或手输分享码跳转过来时，sessionStorage 里带着码 ——
+const importPrompt = ref<{ code: string; name: string; count: number } | null>(null)
+const importBusy = ref(false)
+
+onMounted(async () => {
+  const code = sessionStorage.getItem('lyco-import-share')
+  if (!code) return
+  sessionStorage.removeItem('lyco-import-share')
+  try {
+    const s = await getShared(code)
+    importPrompt.value = { code, name: s.name, count: s.trackCount }
+  } catch { /* 分享失效就静默忽略，不打断页面 */ }
+})
+
+async function confirmImport(): Promise<void> {
+  const pr = importPrompt.value
+  if (!pr) return
+  importBusy.value = true
+  try {
+    const s = await getShared(pr.code)
+    const pl = await library.createPlaylist(s.name || '导入的歌单')
+    for (const t of s.tracks) {
+      await library.addToPlaylist(pl.id, { ...t, id: t.songmid, source: t.source as SourceId })
+    }
+    importPrompt.value = null
+  } catch { /* 导入失败静默；歌单页会显示实际结果 */ } finally {
+    importBusy.value = false
+  }
+}
+
+function dismissImport(): void {
+  importPrompt.value = null
+}
 
 /** 列表项：把 playedAt 显式提出来，模板里就不用做类型断言（vue-tsc 不接受模板中的 as） */
 interface Row {
@@ -79,6 +115,15 @@ function fmtTime(ms: number): string {
         :class="tab === 'recent' ? 'bg-ncm-accent text-white' : 'bg-white text-ncm-muted hover:bg-black/5'"
         @click="tab = 'recent'"
       >最近播放 {{ history.length }}</button>
+    </div>
+
+    <!-- 分享导入确认条 -->
+    <div v-if="importPrompt" class="mt-4 flex items-center gap-3 rounded-nav border border-ncm-accent/30 bg-ncm-accent/5 p-4">
+      <span class="flex-1 text-[14px] text-ncm-fg">
+        导入歌单「<b class="font-semibold">{{ importPrompt.name }}</b>」（{{ importPrompt.count }} 首）？
+      </span>
+      <button class="rounded-pill bg-ncm-accent px-4 py-1.5 text-[13px] text-white disabled:opacity-50" :disabled="importBusy" @click="confirmImport">导入</button>
+      <button class="rounded-pill border border-ncm-divider px-4 py-1.5 text-[13px] text-ncm-muted hover:bg-black/5" @click="dismissImport">取消</button>
     </div>
 
     <div v-if="!list.length" class="mt-10 flex flex-col items-center">

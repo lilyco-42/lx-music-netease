@@ -8,6 +8,7 @@ import {
   ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View,
 } from 'react-native'
 import { useFriendsApi, type FriendsState } from '../friends'
+import { pullFeed, type FeedItem } from '../share'
 import { colors, topInset } from '../theme'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -20,11 +21,12 @@ function fmtTime(t: number): string {
     String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
 }
 
-export default function FriendsScreen({ onNeedMembership }: { onNeedMembership?: () => void }) {
+export default function FriendsScreen({ onNeedMembership, onOpenMy }: { onNeedMembership?: () => void; onOpenMy?: () => void }) {
   const api = useFriendsApi()
   const [state, setState] = useState<FriendsState>({
     me: null, friends: [], pendingIn: [], pendingOut: [],
   })
+  const [feed, setFeed] = useState<FeedItem[]>([])
   const [code, setCode] = useState('')
   const [loaded, setLoaded] = useState(false)
 
@@ -34,6 +36,8 @@ export default function FriendsScreen({ onNeedMembership }: { onNeedMembership?:
       setState({ me: r.mine, friends: r.list.friends, pendingIn: r.list.pendingIn, pendingOut: r.list.pendingOut })
       setLoaded(true)
     }
+    const f = await pullFeed()
+    if (f) setFeed(f.items)
   }, [])
 
   useEffect(() => { void pull() }, [])
@@ -155,6 +159,36 @@ export default function FriendsScreen({ onNeedMembership }: { onNeedMembership?:
                     style={{ borderWidth: 1, borderColor: colors.divider, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 }}
                   >
                     <Text style={{ color: colors.muted, fontSize: 12 }}>拒绝</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {/* 好友动态 */}
+          {feed.length ? (
+            <View style={{ marginTop: 16 }}>
+              <Text style={{ color: colors.fg, fontSize: 15, fontWeight: '600' }}>好友动态</Text>
+              {feed.map((item, i) => (
+                <View key={i} style={{
+                  marginTop: 8, backgroundColor: colors.surface, borderRadius: 12, padding: 12,
+                  flexDirection: 'row', alignItems: 'center', gap: 10,
+                }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.fg, fontSize: 13.5 }} numberOfLines={1}>
+                      {item.nickname} 分享了「{item.payload.name}」
+                    </Text>
+                    <Text style={{ color: colors.muted, fontSize: 11 }}>{item.payload.count} 首</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => {
+                      // 导入走「我的」页：把码暂存，MyMusicScreen 挂载时识别
+                      // （RN 无 sessionStorage，用全局挂一个）
+                      ;(globalThis as { __lycoImportShare?: string }).__lycoImportShare = item.payload.shareCode
+                      onOpenMy?.()
+                    }}
+                    style={{ backgroundColor: colors.accent + '22', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
+                    <Text style={{ color: colors.accent, fontSize: 12 }}>导入</Text>
                   </Pressable>
                 </View>
               ))}

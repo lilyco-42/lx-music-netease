@@ -67,7 +67,7 @@ export default function App() {
         ) : tab === 'member' ? (
           <MembershipScreen />
         ) : tab === 'friends' ? (
-          <FriendsScreen onNeedMembership={() => setTab('member')} />
+          <FriendsScreen onNeedMembership={() => setTab('member')} onOpenMy={() => setTab('my')} />
         ) : (
           <SyncScreen />
         )}

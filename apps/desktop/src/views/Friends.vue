@@ -6,15 +6,52 @@
  * 和云同步页一个套路，用户不用理解「令牌」是什么。
  */
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useFriends } from '../lib/friends'
+import { useSharing, type FeedItem } from '../lib/share'
 
 const { me, friends, pendingIn, pendingOut, busy, error, refresh, addByCode, accept, decline, remove, rename } = useFriends()
+const { feed, unread, feedBusy, pullFeed } = useSharing()
+const router = useRouter()
 
 const codeInput = ref('')
 const nickInput = ref('')
 const editingNick = ref(false)
+const importCode = ref('')
+const importing = ref(false)
 
-onMounted(() => { void refresh() })
+onMounted(() => {
+  void refresh()
+  void pullFeed()
+})
+
+/** 打开好友分享的歌单：把分享码存 sessionStorage，「我的音乐」页识别后导入 */
+function openShared(item: FeedItem) {
+  sessionStorage.setItem('lyco-import-share', item.payload.shareCode)
+  router.push({ name: 'my' })
+}
+
+async function submitImport() {
+  const code = importCode.value.trim()
+  if (!code) return
+  importing.value = true
+  try {
+    sessionStorage.setItem('lyco-import-share', code.toUpperCase())
+    importCode.value = ''
+    router.push({ name: 'my' })
+  } finally {
+    importing.value = false
+  }
+}
+
+function fmtFeedTime(t: number): string {
+  const d = new Date(t * 1000)
+  const today = new Date()
+  const sameDay = d.toDateString() === today.toDateString()
+  return sameDay
+    ? String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
+    : d.getMonth() + 1 + '/' + d.getDate()
+}
 
 async function submitAdd() {
   if (!codeInput.value.trim()) return
@@ -95,7 +132,28 @@ function fmtTime(t: number): string {
         <button class="rounded-pill bg-ncm-accent px-4 py-2 text-[13px] text-white" @click="saveNick">保存</button>
       </div>
 
-      <!-- 加好友 -->
+      <!-- 好友动态 -->
+      <div v-if="feed.length" class="mt-5 rounded-nav bg-ncm-surface p-5">
+        <p class="text-[15px] font-semibold text-ncm-fg">好友动态</p>
+        <ul class="mt-3 flex flex-col gap-2.5">
+          <li v-for="(item, i) in feed" :key="i" class="flex items-center gap-3">
+            <span class="min-w-0 flex-1 truncate text-[14px] text-ncm-fg">
+              <b class="font-semibold">{{ item.nickname }}</b>
+              分享了歌单「{{ item.payload.name }}」（{{ item.payload.count }} 首）
+            </span>
+            <span class="text-[12px] text-ncm-fainter">{{ fmtFeedTime(item.createdAt) }}</span>
+            <button class="rounded-pill bg-ncm-accent/10 px-3 py-1 text-[12px] text-ncm-accent hover:bg-ncm-accent/20" @click="openShared(item)">导入</button>
+          </li>
+        </ul>
+      </div>
+
+    <!-- 导入分享码 -->
+      <div class="mt-3 flex gap-2">
+        <input v-model="importCode" maxlength="10" placeholder="输入歌单分享码" class="flex-1 rounded-search border border-ncm-divider bg-ncm-bg px-4 py-2 font-mono text-[14px] uppercase text-ncm-fg outline-none focus:border-ncm-accent" @keyup.enter="submitImport" />
+        <button class="rounded-pill border border-ncm-divider px-4 py-2 text-[13px] text-ncm-muted hover:bg-black/5 disabled:opacity-50" :disabled="importing || !importCode.trim()" @click="submitImport">导入</button>
+      </div>
+
+    <!-- 加好友 -->
       <div class="mt-5 rounded-nav bg-ncm-surface p-5">
         <p class="text-[15px] font-semibold text-ncm-fg">添加好友</p>
         <div class="mt-3 flex gap-2">
