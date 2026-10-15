@@ -58,7 +58,12 @@ mac:
   artifactName: ${productName}-${version}-macos-${arch}.${ext}
 
 dmg:
-  title: ${productName} ${version}
+  # 必须带 ${arch}：x64 与 arm64 两个 DMG 是并发构建的，若卷名相同
+  # （都叫 "LX Music 0.1.0"），第二个卷会挂成 "... 1"，
+  # 随后 hdiutil detach 因卷名冲突以 exit 16 (resource busy) 失败，
+  # dmgbuild 接着找不到 /Volumes/<name>/.background/background.tiff。
+  # 卷名按架构区分即可根治。
+  title: ${productName} ${version} ${arch}
 
 linux:
   icon: build/icon.png
