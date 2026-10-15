@@ -26,6 +26,7 @@ import {
   type MusicItem,
   type Quality,
 } from '@lxmn/core'
+import { library } from './sync'
 
 export interface MobilePlayerState {
   queue: MusicItem[]
@@ -133,6 +134,9 @@ async function resolveAndPlay(item: MusicItem): Promise<void> {
     })
     await TrackPlayer.play()
     state.playing = true
+    // 播放记录：只有真的出流了才记，避免把取流失败的歌也算进「最近播放」。
+    // 失败不影响播放本身。
+    void library.recordPlay(item).catch(() => undefined)
   } catch (e) {
     state.error = e instanceof Error ? e.message : String(e)
     state.playing = false

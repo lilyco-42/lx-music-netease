@@ -11,17 +11,19 @@ import HomeScreen from './src/screens/HomeScreen'
 import SearchScreen from './src/screens/SearchScreen'
 import PlayerScreen from './src/screens/PlayerScreen'
 import MembershipScreen from './src/screens/MembershipScreen'
+import SyncScreen from './src/screens/SyncScreen'
 import { ensurePlatform } from './src/platform'
 import { setupPlayer, useTrackPlayerEvents } from './src/player'
 import { colors, TAB_BAR_HEIGHT, topInset } from './src/theme'
 
-type TabKey = 'home' | 'search' | 'player' | 'member'
+type TabKey = 'home' | 'search' | 'player' | 'member' | 'sync'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'home', label: '首页' },
   { key: 'search', label: '搜索' },
   { key: 'player', label: '播放器' },
   { key: 'member', label: '会员' },
+  { key: 'sync', label: '同步' },
 ]
 
 export default function App() {
@@ -56,8 +58,10 @@ export default function App() {
           <SearchScreen initialKeyword={seedKeyword} />
         ) : tab === 'player' ? (
           <PlayerScreen />
-        ) : (
+        ) : tab === 'member' ? (
           <MembershipScreen />
+        ) : (
+          <SyncScreen />
         )}
       </View>
 

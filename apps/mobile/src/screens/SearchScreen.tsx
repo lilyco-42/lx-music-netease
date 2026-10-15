@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native'
 import { getSource, hasSource, listSources, type MusicItem } from '@lxmn/core'
 import { play, usePlayerState } from '../player'
+import { library } from '../sync'
 import { colors, topInset } from '../theme'
 
 export default function SearchScreen({ initialKeyword }: { initialKeyword?: string }) {
@@ -15,7 +16,25 @@ export default function SearchScreen({ initialKeyword }: { initialKeyword?: stri
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  /** 收藏集合：存 key 而不是整条曲目，避免每首歌都做一次深比较 */
+  const [favKeys, setFavKeys] = useState<Set<string>>(new Set())
   const st = usePlayerState()
+
+  const keyOf = (i: MusicItem) => i.source + '::' + String(i.songmid)
+
+  /** 从曲库同步收藏状态到界面 */
+  const pullFavs = useCallback(() => {
+    setFavKeys(new Set(library.snapshot().favorites.map(keyOf)))
+  }, [])
+
+  useEffect(() => {
+    void library.load().then(pullFavs)
+  }, [pullFavs])
+
+  async function toggleFav(item: MusicItem) {
+    await library.toggleFavorite(item)
+    pullFavs()
+  }
 
   /** 真正执行搜索。显式收 keyword，这样「首页带词跳进来」也能复用 */
   const runWith = useCallback(async (raw: string) => {
@@ -138,6 +157,18 @@ export default function SearchScreen({ initialKeyword }: { initialKeyword?: stri
                     {item.singer}{item.albumName ? ' · ' + item.albumName : ''}
                   </Text>
                 </View>
+                <Pressable
+                  onPress={() => void toggleFav(item)}
+                  hitSlop={12}
+                  style={{ paddingHorizontal: 4, paddingVertical: 6 }}
+                >
+                  <Text style={{
+                    fontSize: 17,
+                    color: favKeys.has(keyOf(item)) ? colors.accent : colors.fainter,
+                  }}>
+                    {favKeys.has(keyOf(item)) ? '♥' : '♡'}
+                  </Text>
+                </Pressable>
                 <Text style={{ color: colors.fainter, fontSize: 11 }}>{item.source.toUpperCase()}</Text>
               </Pressable>
             )

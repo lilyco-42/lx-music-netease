@@ -11,6 +11,7 @@ import {
 import { ANNUAL_PRICE_CNY, SHOP_URL } from '@lxmn/core'
 import type { MembershipStatus, ApplyResult } from '@lxmn/core'
 import { activate, status as fetchStatus, deactivate } from '../license'
+import { connectWithMembership, disconnectSync } from '../sync'
 import { colors, topInset } from '../theme'
 
 const FEATURES = [
@@ -46,6 +47,13 @@ export default function MembershipScreen() {
       const { status: st, applied } = await activate(link.trim())
       setResult(st)
       setApplyResult(applied)
+      // 会员身份即同步身份：激活的同时把云同步一起开通，
+      // 不额外要求用户去注册账号或再填一次令牌。
+      // 放在这里而不是 license.ts，是因为移动端 tsconfig 不支持动态 import，
+      // 而 license → sync 的静态 import 会与 sync → license 成环。
+      if (st.state === 'active') {
+        await connectWithMembership().catch(() => undefined)
+      }
       if (st.state === 'expired') setError('会员已过期，请续费后重新获取订阅链接')
       if (st.state === 'invalid') setError(st.reason)
       if (st.state === 'active') setLink('')
@@ -70,6 +78,7 @@ export default function MembershipScreen() {
 
   async function onDeactivate() {
     await deactivate()
+    await disconnectSync().catch(() => undefined)
     setResult({ state: 'none' })
     setApplyResult(null)
     setError('')

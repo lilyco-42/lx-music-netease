@@ -145,6 +145,19 @@ export class SubscriptionClient {
     return doc
   }
 
+  /**
+   * 当前订阅的令牌（从缓存里的链接反解出来）。
+   *
+   * 云同步直接复用这个令牌，用户不必为同步再注册一个账号 ——
+   * 他已经为了音源填过一次链接了。
+   */
+  async token(): Promise<string> {
+    if (!this.cache) await this.restore()
+    if (!this.cache) return ''
+    const m = /\/api\/music\/sub\/([^/?#]+)/.exec(this.cache.url)
+    return m && m[1] ? decodeURIComponent(m[1]) : ''
+  }
+
   /** 从本地缓存恢复（离线可用） */
   async restore(): Promise<MembershipStatus> {
     try {

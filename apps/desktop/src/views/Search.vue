@@ -8,10 +8,21 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePlayer } from '@/lib/player'
+import { useSync } from '@/lib/sync'
 import type { MusicItem } from '@lxmn/core'
 
 const route = useRoute()
 const player = usePlayer()
+const { library, favorites } = useSync()
+
+/** 收藏状态由曲库决定；这里用 favorites 驱动重算，收藏后按钮立刻变实心 */
+function isFav(item: MusicItem): boolean {
+  return favorites.value.some(f => f.source === item.source && String(f.songmid) === String(item.songmid))
+}
+
+async function toggleFav(item: MusicItem): Promise<void> {
+  await library.toggleFavorite(item)
+}
 
 const loading = ref(false)
 const error = ref('')
@@ -85,6 +96,22 @@ function fmtDuration(v: unknown): string {
           <div class="truncate text-[16px] text-ncm-fg">{{ item.name }}</div>
           <div class="truncate text-[13px] text-ncm-faint">{{ item.singer }}</div>
         </div>
+
+        <button
+          type="button"
+          class="shrink-0 rounded-full p-2 transition-colors hover:bg-black/5"
+          :aria-label="isFav(item) ? '取消收藏' : '收藏'"
+          :title="isFav(item) ? '取消收藏' : '收藏'"
+          @click.stop="toggleFav(item)"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="size-[18px] transition-colors"
+            :class="isFav(item) ? 'fill-ncm-accent' : 'fill-none stroke-ncm-fainter stroke-2'"
+          >
+            <path d="M12 21s-7.5-4.9-9.3-9.2C1.2 8.3 3.3 5 6.7 5c2 0 3.6 1.1 4.4 2.7l.9 1.7.9-1.7C13.7 6.1 15.3 5 17.3 5c3.4 0 5.5 3.3 4 6.8C19.5 16.1 12 21 12 21z" />
+          </svg>
+        </button>
 
         <div class="hidden w-[240px] shrink-0 truncate text-[14px] text-ncm-faint md:block">
           {{ item.albumName }}

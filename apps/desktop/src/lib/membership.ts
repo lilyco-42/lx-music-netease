@@ -7,10 +7,10 @@
  * 这是响应式的薄封装：SubscriptionClient 负责协议与缓存，这里只把它接到 Vue。
  */
 import { computed, ref } from 'vue'
-import { SubscriptionClient, SHOP_URL, ANNUAL_PRICE_CNY } from '@lxmn/core'
+import { SHOP_URL, ANNUAL_PRICE_CNY } from '@lxmn/core'
 import type { MembershipStatus, ApplyResult } from '@lxmn/core'
-
-const client = new SubscriptionClient()
+import { library } from './sync'
+import { subscription as client } from './subscription'
 const status = ref<MembershipStatus>({ state: 'none' })
 const busy = ref(false)
 const error = ref('')
@@ -39,6 +39,10 @@ export function useMembership() {
       const doc = await client.fetch(link.trim())
       applyResult.value = await client.apply(doc)
       status.value = { state: 'active', plan: doc.plan, sources: doc.sources }
+      // 会员身份即同步身份：激活的同时把云同步一起开通，
+      // 不额外要求用户去注册/再填一次令牌。
+      const token = await client.token()
+      if (token) await library.configureSync(token)
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
     } finally {
@@ -60,6 +64,7 @@ export function useMembership() {
   /** 退出会员 */
   async function clear(): Promise<void> {
     await client.clear()
+    await library.disableSync()
     applyResult.value = { applied: [], unavailable: [], skipped: [] }
     status.value = { state: 'none' }
     error.value = ''

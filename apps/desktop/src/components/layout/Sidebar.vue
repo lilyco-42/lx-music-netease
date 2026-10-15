@@ -29,6 +29,8 @@ const navMine = [
 
 /** 会员入口：与移动端「会员」页同一套订阅协议 */
 const navMembership = { key: 'membership', label: '音乐会员', icon: 'vip' }
+/** 云同步入口：默认走 lain42.top，会员令牌直接复用 */
+const navSync = { key: 'sync', label: '云同步', icon: 'sync' }
 
 // 实测：创建的歌单 13
 const playlists = ref(
@@ -40,6 +42,9 @@ const playlists = ref(
 )
 
 const active = ref('recommend')
+
+/** 路由名 → 侧栏高亮：进入会员/同步页时对应项要亮起来 */
+const ROUTE_HIGHLIGHT: Record<string, string> = { membership: 'membership', sync: 'sync' }
 </script>
 
 <template>
@@ -87,6 +92,19 @@ const active = ref('recommend')
 
     <!-- 分隔线：实测 y≈375 -->
     <div class="mx-[30px] my-4 h-px bg-ncm-divider" />
+
+    <!-- 云同步入口 -->
+    <button
+      type="button"
+      class="relative mx-[30px] flex h-[45px] w-[206px] items-center gap-3 rounded-nav px-3.5 text-left text-[18px] leading-6 transition-colors"
+      :class="route.name === navSync.key
+        ? 'bg-ncm-accent-nav text-white'
+        : 'text-ncm-muted hover:bg-black/5'"
+      @click="router.push({ name: navSync.key })"
+    >
+      <span class="size-[18px] shrink-0 rounded-[3px] border-[1.5px] border-current opacity-80" />
+      <span>{{ navSync.label }}</span>
+    </button>
 
     <!-- 我的 -->
     <div class="flex flex-col">

@@ -9,6 +9,8 @@ export * from './portable-platform'
 export * from './http/fetch'
 export * from './storage/web'
 export * from './license'
+export * from './sync'
+export * from './library'
 export * from './sources'
 
 export const CORE_VERSION = '0.1.0'
