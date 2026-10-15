@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native'
-import { getSource, type MusicItem } from '@lxmn/core'
+import { getSource, hasSource, listSources, type MusicItem } from '@lxmn/core'
 import { play, usePlayerState } from '../player'
 import { colors, topInset } from '../theme'
 
@@ -26,11 +26,33 @@ export default function SearchScreen({ initialKeyword }: { initialKeyword?: stri
     setList([])
     setTotal(0)
     try {
-      const source = getSource('wy')
-      if (!source.musicSearch) throw new Error('当前音源不支持搜索')
-      const r = await source.musicSearch(q, 1, 30)
-      setList(r.list)
-      setTotal(r.total)
+      // 和桌面端同一策略：并发查所有能搜索的音源，去重合并。
+      // 只查 wy 会把 kw/mg/kg 的免费曲库白白丢掉，而 wy 上大量 VIP 曲目
+      // 本来就拿不到播放地址。
+      const ids = listSources().filter(id => hasSource(id) && Boolean(getSource(id).musicSearch))
+      if (!ids.length) throw new Error('当前没有可用的音源')
+
+      const results = await Promise.all(
+        ids.map(id => getSource(id).musicSearch!(q, 1, 30).catch(() => null)),
+      )
+      const seen = new Set<string>()
+      const merged: MusicItem[] = []
+      let sum = 0
+      for (const r of results) {
+        if (!r) continue
+        sum += r.total
+        for (const it of r.list) {
+          const key = it.source + '-' + String(it.songmid)
+          if (seen.has(key)) continue
+          seen.add(key)
+          merged.push(it)
+        }
+      }
+      if (!merged.length && results.every(r => r === null)) {
+        throw new Error('所有音源都没有响应，请检查网络')
+      }
+      setList(merged)
+      setTotal(sum)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {

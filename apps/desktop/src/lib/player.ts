@@ -124,12 +124,47 @@ async function loadPic(item: MusicItem): Promise<void> {
 }
 
 export function usePlayer() {
-  /** 搜索：直接透传给内核，各音源的实现差异由内核吸收 */
+  /**
+   * 搜索。
+   *
+   * 原来只查 wy 一家。内核现在有 wy/kw/mg/kg 四个能真取到音频的音源，
+   * 只查一家等于把另外三家的曲库白白丢掉 —— 尤其 wy 大量 VIP 曲目
+   * 拿不到地址，而同一首歌在 kw/mg 上往往是免费的。
+   *
+   * 并发查所有已注册的音源，按 (source, songmid) 去重后合并。
+   * 单个音源失败不影响其它（搜「自由听歌」时最怕一个源超时就整页报错）。
+   */
   async function search(keyword: string, page = 1, limit = 30) {
-    if (!keyword.trim()) return { list: [], total: 0, page, limit, source: 'wy' as const }
-    const source = getSource('wy')
-    if (!source.musicSearch) throw new Error('当前音源不支持搜索')
-    return source.musicSearch(keyword.trim(), page, limit)
+    const kw = keyword.trim()
+    if (!kw) return { list: [], total: 0, page, limit, source: 'wy' as const }
+
+    // 只挑真正实现了搜索的音源（有些音源只有榜单/歌单）
+    const ids = listSources().filter(id => hasSource(id) && Boolean(getSource(id).musicSearch))
+    if (!ids.length) throw new Error('当前没有可用的音源')
+
+    const results = await Promise.all(
+      ids.map(id =>
+        getSource(id).musicSearch!(kw, page, limit).catch(() => null),
+      ),
+    )
+
+    const seen = new Set<string>()
+    const list: MusicItem[] = []
+    let total = 0
+    for (const r of results) {
+      if (!r) continue
+      total += r.total
+      for (const it of r.list) {
+        const key = it.source + '-' + String(it.songmid)
+        if (seen.has(key)) continue
+        seen.add(key)
+        list.push(it)
+      }
+    }
+    if (!list.length && results.every(r => r === null)) {
+      throw new Error('所有音源都没有响应，请检查网络')
+    }
+    return { list, total, limit, page, source: 'wy' as const }
   }
 
   /** 播放指定曲目：把它插入队列并立即播放 */
