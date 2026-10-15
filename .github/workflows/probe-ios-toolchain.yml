@@ -1,0 +1,36 @@
+name: Probe iOS toolchain
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: macos-latest
+    steps:
+      - name: Xcode version
+        run: |
+          xcodebuild -version
+          echo "DEVDIR=$(xcode-select -p)"
+
+      - name: Look for Swift compatibility libraries
+        run: |
+          DEV=$(xcode-select -p)
+          TC="$DEV/Toolchains/XcodeDefault.xctoolchain"
+          echo "=== toolchain usr/lib/swift ==="
+          ls -la "$TC/usr/lib/swift/" 2>&1 | head -40
+          echo "=== iphoneos dir ==="
+          ls -la "$TC/usr/lib/swift/iphoneos/" 2>&1 | head -60
+          echo "=== any *Compatibility* in toolchain ==="
+          find "$TC" -iname '*Compatibility*' 2>/dev/null | head -40
+          echo "=== any *Compatibility* in whole Xcode (first 40) ==="
+          find "$DEV" -iname '*swiftCompatibility*' 2>/dev/null | head -40
+          echo "=== iPhoneOS SDK usr/lib/swift ==="
+          ls -la "$DEV/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/lib/swift/" 2>&1 | head -40
+          echo "=== grep swiftCompatibility in toolchain lib ==="
+          find "$TC/usr/lib" -maxdepth 4 -name 'libswift*' 2>/dev/null | head -40
+
+      - name: Check swiftc runtime-compatibility-version flag
+        run: |
+          xcrun swiftc -help-hidden 2>&1 | grep -i -E 'runtime-compatibility|autolink' | head -20 || true
+          echo "--- frontend ---"
+          xcrun swift-frontend -help-hidden 2>&1 | grep -i -E 'runtime-compatibility|autolink' | head -20 || true
