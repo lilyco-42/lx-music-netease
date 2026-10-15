@@ -186,6 +186,36 @@ describe('Library 持久化与同步', () => {
     expect(lib.snapshot().settings.quality).toBe('320k')
   })
 
+  it('没 load 就 recordPlay 不能抹掉已存数据（回归）', async () => {
+    // 先存一份数据
+    const a = new Library()
+    await a.load()
+    await a.toggleFavorite(song('wy', 'keep', '必须保住'))
+
+    // 新实例，故意不 load 就直接记播放 —— 模拟「用户开机直接点歌」。
+    // 早期实现下这次写回会用空库覆盖存储，收藏就没了。
+    const b = new Library()
+    await b.recordPlay(song('kg', 'new', '新听的'))
+
+    const c = new Library()
+    await c.load()
+    expect(c.snapshot().favorites.some(f => f.songmid === 'keep')).toBe(true)
+    expect(c.snapshot().history.some(h => h.songmid === 'new')).toBe(true)
+  })
+
+  it('没 load 就 toggleFavorite 也不能抹掉已存数据（回归）', async () => {
+    const a = new Library()
+    await a.load()
+    await a.toggleFavorite(song('wy', 'keep', '必须保住'))
+
+    const b = new Library()
+    await b.toggleFavorite(song('kg', 'added', '新收藏'))
+
+    const c = new Library()
+    await c.load()
+    expect(c.snapshot().favorites.map(f => f.songmid).sort()).toEqual(['added', 'keep'])
+  })
+
   it('replace 合并而不是覆盖 —— 本地独有的收藏不会丢', async () => {
     const lib = new Library()
     await lib.load()

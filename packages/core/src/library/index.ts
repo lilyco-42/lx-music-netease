@@ -115,7 +115,19 @@ export class Library {
     return this.snapshot()
   }
 
+  /**
+   * 写回本地存储。
+   *
+   * 必须先 load()：如果没读过就写，写下去的是一份空库，会把用户
+   * 已经存着的收藏和歌单整个抹掉。播放记录是「播完顺手记一次」，
+   * 很容易发生在用户还没进过任何会 load 的页面时，所以这道保险是必要的。
+   */
   private async persist(): Promise<void> {
+    if (!this.loaded) {
+      // 静默跳过而不是抛错：记录失败不该让播放本身失败。
+      // 这里宁可丢这一次记录，也不能覆盖掉用户已有的数据。
+      return
+    }
     try {
       await getPlatform().storage.set(LIBRARY_KEY, JSON.stringify(this.state))
     } catch {
@@ -156,6 +168,7 @@ export class Library {
 
   /** 切换收藏。返回切换后的状态，便于界面给反馈。 */
   async toggleFavorite(item: MusicItem): Promise<boolean> {
+    await this.load()
     const at = this.state.favorites.findIndex(f => isSameTrack(f, item))
     if (at >= 0) {
       this.state.favorites.splice(at, 1)
@@ -173,6 +186,7 @@ export class Library {
   }
 
   async removeFavorite(item: MusicItem): Promise<void> {
+    await this.load()
     const at = this.state.favorites.findIndex(f => isSameTrack(f, item))
     if (at < 0) return
     this.state.favorites.splice(at, 1)
@@ -184,6 +198,9 @@ export class Library {
 
   /** 记一次播放。同一首歌只保留一条，累计次数。 */
   async recordPlay(item: MusicItem): Promise<void> {
+    // 先 load：播放记录常常发生在用户还没进过任何会 load 的页面时，
+    // 不读就写会把已存的收藏和歌单覆盖成空库。
+    await this.load()
     const at = this.state.history.findIndex(h => isSameTrack(h, item))
     const now = Date.now()
     if (at >= 0) {
@@ -203,6 +220,7 @@ export class Library {
   }
 
   async clearHistory(): Promise<void> {
+    await this.load()
     this.state.history = []
     await this.persist()
     this.emit()
@@ -211,6 +229,7 @@ export class Library {
   // ------------------------------------------------------------ 歌单
 
   async createPlaylist(name: string): Promise<SyncPlaylist> {
+    await this.load()
     const now = Date.now()
     const pl: SyncPlaylist = {
       id: 'pl-' + now.toString(36) + '-' + Math.floor(Math.random() * 1e6).toString(36),
@@ -226,6 +245,7 @@ export class Library {
   }
 
   async addToPlaylist(playlistId: string, item: MusicItem): Promise<boolean> {
+    await this.load()
     const pl = this.state.playlists.find(p => p.id === playlistId)
     if (!pl) return false
     if (pl.items.some(i => isSameTrack(i, item))) return false
@@ -237,6 +257,7 @@ export class Library {
   }
 
   async removeFromPlaylist(playlistId: string, item: MusicItem): Promise<void> {
+    await this.load()
     const pl = this.state.playlists.find(p => p.id === playlistId)
     if (!pl) return
     const at = pl.items.findIndex(i => isSameTrack(i, item))
@@ -248,6 +269,7 @@ export class Library {
   }
 
   async deletePlaylist(playlistId: string): Promise<void> {
+    await this.load()
     const at = this.state.playlists.findIndex(p => p.id === playlistId)
     if (at < 0) return
     this.state.playlists.splice(at, 1)
@@ -258,6 +280,7 @@ export class Library {
   // ------------------------------------------------------------ 设置
 
   async updateSettings(patch: SyncSettings): Promise<void> {
+    await this.load()
     this.state.settings = { ...this.state.settings, ...patch }
     this.state.settingsUpdatedAt = Date.now()
     await this.persist()
