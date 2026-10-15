@@ -71,6 +71,24 @@ mac:
     - target: dmg
       arch: [x64, arm64]
   artifactName: LX.Music-${version}-macos-${arch}.${ext}
+  # 没有开发者证书，交给 afterPack 钩子做 ad-hoc 签名。
+  #
+  # 这里必须显式写 null。不写的话 electron-builder 会走
+  # findIdentity()，CI 的 keychain 是空的，返回 null，于是命中
+  # "identity == null && !options.sign" 分支直接 return false ——
+  # 也就是**完全不签名**，而不是「签成 ad-hoc」。未签名的 .app 在
+  # Apple Silicon 上会被 Gatekeeper 拒绝执行，用户双击看到的是
+  # 「已损坏，无法打开」。
+  #
+  # 注意也不能写 identity: '-'：那会被当成证书名字丢给
+  # findIdentity() 去 keychain 里匹配，照样匹配不到。
+  identity: null
+  # 硬化运行时要求签名带 entitlements，ad-hoc 下反而会让 app 起不来。
+  hardenedRuntime: false
+
+# ad-hoc 签名的实际执行者。identity: null 让 electron-builder 跳过它自己的
+# 签名流程，这里再补上 codesign --sign -，保证 bundle 完整性可校验。
+afterPack: ./build/after-pack.cjs
 
 dmg:
   # 必须带 ${arch}：x64 与 arm64 两个 DMG 是并发构建的，若卷名相同
