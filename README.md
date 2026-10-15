@@ -227,13 +227,61 @@ Android 默认用模板自带的 debug keystore 签名（可直接安装）；
 | 平台 | 产物 | 说明 |
 |---|---|---|
 | Windows | `LX.Music-<版本>-windows-setup.exe` / `.msi` / `-x64-portable.exe` | 安装向导 / MSI 静默 / 免安装 |
-| macOS | `LX.Music-<版本>-macos-x64.dmg` / `-arm64.dmg` | 未签名，首次打开需右键 → 打开 |
+| macOS | `LX.Music-<版本>-macos-x64.dmg` / `-arm64.dmg` | ad-hoc 签名，首次打开需右键 → 打开 |
 | Linux | `LX.Music-<版本>-linux-x86_64.AppImage` | `chmod +x` 后直接运行 |
-| Android | `LX.Music-<版本>-android-universal.apk` | 侧载安装；debug 签名 |
+| Android | `LX.Music-<版本>-android-universal.apk` | 侧载安装；正式密钥签名 |
 | iOS | `LX.Music-<版本>-ios-unsigned.ipa` | 未签名，需自行签名或用 AltStore 侧载 |
 
 发布同时把产物同步到 `https://lain42.top/downloads/`（含 `SHA256SUMS.txt`），
 并幂等登记进下载页的 `manifest.json`。
+
+### 签名现状（重要）
+
+没有 Apple / Windows 代码签名证书，所以：
+
+- **macOS 是 ad-hoc 签名**（`codesign --sign -`），不是 Developer ID，**不代表 Gatekeeper 信任**。
+  首次打开必须右键 → 打开。见下面「为什么必须显式做 ad-hoc 签名」。
+- **Windows 未签名**，SmartScreen 会拦一次，需要点「更多信息 → 仍要运行」。
+- **Android 用正式密钥签名**（`LXMN_* secrets`），不是 debug 签名。
+- **iOS 未签名**，需要自签或用 AltStore 侧载。
+
+#### 为什么必须显式做 ad-hoc 签名
+
+没有证书时 electron-builder **不会**退化成 ad-hoc 签名，而是直接 `return false`
+什么都不做（`app-builder-lib/out/macPackager.js` 里
+`identity == null && !options.sign` 那条分支）。结果是 `.app` 完全没有签名，
+而**未签名的 .app 在 Apple Silicon 上会被 Gatekeeper 拒绝执行** ——
+用户双击看到的是「已损坏，无法打开」，而不是可以绕过的那句「无法验证开发者」。
+
+也不能写 `identity: '-'` 绕过去：那个值会被当成证书名字丢给 `findIdentity()`
+去 keychain 里匹配，CI 的 keychain 是空的，照样匹配不到。
+
+所以配置里写 `identity: null`（明确跳过 electron-builder 自己的签名流程），
+再用 `afterPack` 钩子（`apps/desktop/build/after-pack.cjs`）自己调
+`codesign --sign -`，并在签名后立刻 `codesign --verify --deep --strict` 校验。
+
+时序上安全：`platformPackager.doPack` 里 `afterPack` 在前、
+`doSignAfterPack` 在后，`identity` 为 null 时后者什么都不做，
+所以钩子签好的签名不会被覆盖。
+
+#### Android 为什么不能再用 debug 签名
+
+仓库里的 `apps/mobile/android/app/debug.keystore` 是公开的（密码就是 `android`）。
+用它给正式包签名，等于把「谁能签出被 Android 认作同一应用合法升级的包」
+交给所有人 —— 任何人都能签一个包覆盖安装到用户手机上。
+
+所以正式密钥单独生成，只以 base64 存在 GitHub secret 里：
+
+| Secret | 内容 |
+|---|---|
+| `LXMN_KEYSTORE_BASE64` | PKCS12 密钥库的 base64 |
+| `LXMN_KEYSTORE_PASSWORD` | 密钥库口令 |
+| `LXMN_KEY_ALIAS` | 密钥别名 |
+| `LXMN_KEY_PASSWORD` | 密钥口令（PKCS12 下与库口令相同） |
+
+密钥备份在 `~/.lxmn/lxmn-release.p12`（仓库外）。**丢了就再也无法给老用户
+发覆盖安装的更新**，只能让用户卸载重装。fork 仓库没配 secret 时会明确回退到
+debug 签名并在日志里发 warning，保证产物仍可侧载，但不可用于正式分发。
 
 ### iOS 链接失败的那次踩坑
 
