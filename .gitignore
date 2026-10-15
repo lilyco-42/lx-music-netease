@@ -7,3 +7,7 @@ out/
 coverage/
 *.tsbuildinfo
 release/
+
+# Python 字节码：本地校验脚本语法时会生成，不应进仓库
+__pycache__/
+*.pyc
