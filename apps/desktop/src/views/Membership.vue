@@ -51,6 +51,7 @@ onMounted(restore)
           <span class="text-[52px] font-extrabold leading-[56px] text-ncm-accent">¥{{ ANNUAL_PRICE_CNY }}</span>
           <span class="mb-2 ml-2 text-[17px] text-ncm-faint">/ 年</span>
         </div>
+        <p class="mt-1 text-[13px] text-ncm-faint">{{ ANNUAL_PRICE_CNY * 10 }} 积分（10 积分 = 1 元）</p>
         <h2 class="mt-3 text-[19px] font-semibold text-ncm-fg">音乐会员 · 年卡</h2>
 
         <ul class="mt-5 space-y-2.5">

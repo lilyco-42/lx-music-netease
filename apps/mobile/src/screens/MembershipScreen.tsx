@@ -109,6 +109,9 @@ export default function MembershipScreen() {
             </Text>
             <Text style={{ color: colors.muted, fontSize: 15, marginLeft: 8, marginBottom: 6 }}>/ 年</Text>
           </View>
+          <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+            {ANNUAL_PRICE_CNY * 10} 积分（10 积分 = 1 元）
+          </Text>
           <Text style={{ color: colors.fg, fontSize: 15, fontWeight: '600', marginTop: 10 }}>音乐会员 · 年卡</Text>
 
           <View style={{ marginTop: 16, gap: 10 }}>
