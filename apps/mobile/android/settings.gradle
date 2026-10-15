@@ -2,25 +2,30 @@
 // 依赖因此被提升到**仓库根**的 node_modules，而不是 apps/mobile/node_modules。
 // RN 模板默认写死 ../node_modules，在 monorepo 里会指向不存在的路径，
 // 报 "Included build .../gradle-plugin does not exist"。
-// 这里向上查找真正含有 react-native 的 node_modules 目录，两种布局都能用。
-def resolveNodeModules = {
-    def dir = settingsDir
-    for (int i = 0; i < 5; i++) {
-        def candidate = new File(dir, 'node_modules')
+// 这里向上查找真正含有 react-native 的 node_modules，两种布局都能用。
+//
+// 注意：Gradle 要求 pluginManagement 必须是文件里的**第一条语句**，
+// 所以查找逻辑只能内联在它内部，不能先写 def。找到的路径存进
+// gradle.ext 供文件末尾复用。
+pluginManagement {
+    def rnNodeModules = null
+    def probe = settingsDir
+    for (int i = 0; i < 5 && rnNodeModules == null && probe != null; i++) {
+        def candidate = new File(probe, 'node_modules')
         if (new File(candidate, 'react-native').exists()) {
-            return candidate
+            rnNodeModules = candidate
         }
-        dir = dir.parentFile
-        if (dir == null) break
+        probe = probe.parentFile
     }
-    throw new GradleException(
-        'node_modules 未找到（需要含 react-native）。请先在仓库根执行 pnpm install。')
+    if (rnNodeModules == null) {
+        throw new GradleException(
+            'node_modules 未找到（需要含 react-native）。请先在仓库根执行 pnpm install。')
+    }
+    gradle.ext.rnNodeModules = rnNodeModules
+    includeBuild(new File(rnNodeModules, '@react-native/gradle-plugin'))
 }
-def rnNodeModules = resolveNodeModules()
-
-pluginManagement { includeBuild(new File(rnNodeModules, '@react-native/gradle-plugin')) }
 plugins { id("com.facebook.react.settings") }
 extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
 rootProject.name = 'LXMusic'
 include ':app'
-includeBuild(new File(rnNodeModules, '@react-native/gradle-plugin'))
+includeBuild(new File(gradle.ext.rnNodeModules, '@react-native/gradle-plugin'))

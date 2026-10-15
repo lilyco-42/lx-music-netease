@@ -26,9 +26,19 @@ win:
   target:
     - target: nsis
       arch: [x64]
+    - target: msi
+      arch: [x64]
     - target: portable
       arch: [x64]
   artifactName: ${productName}-${version}-windows-${arch}.${ext}
+
+msi:
+  oneClick: false
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: LX Music
+  artifactName: ${productName}-${version}-windows-${arch}.msi
 
 nsis:
   oneClick: false

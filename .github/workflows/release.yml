@@ -34,9 +34,10 @@ jobs:
         run: pnpm -r --filter './packages/**' build
       - name: Build renderer
         run: pnpm --filter @lxmn/app-desktop build
-      - name: Package (nsis + portable)
+      # msi 需要 WiX，windows runner 自带；产出 .msi 供企业/静默安装场景。
+      - name: Package (nsis + msi + portable)
         working-directory: apps/desktop
-        run: pnpm exec electron-builder --win nsis portable --publish never
+        run: pnpm exec electron-builder --win nsis msi portable --publish never
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
