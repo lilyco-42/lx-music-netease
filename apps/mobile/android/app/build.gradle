@@ -22,6 +22,11 @@ react {
     codegenDir = new File(rnNodeModules, '@react-native/codegen')
     //   The cli.js file which is the React Native CLI entrypoint. Default is ../../node_modules/react-native/cli.js
     cliFile = new File(rnNodeModules, 'react-native/cli.js')
+    //   hermesc：默认值会拼成 <root>/node_modules/react-native/sdks/hermesc/%OS-BIN%/hermesc，
+    //   而 root = ../../（apps/mobile），在 monorepo 下指向 apps/mobile/node_modules，
+    //   那里没有 react-native，于是报 "Couldn't determine Hermesc location"。
+    //   %OS-BIN% 由 RNGP 替换成 linux64-bin / osx-bin / win64-bin。
+    hermesCommand = new File(rnNodeModules, 'react-native/sdks/hermesc/%OS-BIN%/hermesc').absolutePath
 
     /* Variants */
     //   The list of variants to that are debuggable. For those we're going to
