@@ -7,8 +7,17 @@
  * 语音按钮 45x45
  */
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const keyword = ref('')
+
+/** 回车即跳搜索页；用 query 传关键词，这样刷新/前进后退都能复现结果 */
+function onSearch(): void {
+  const q = keyword.value.trim()
+  if (!q) return
+  void router.push({ name: 'search', query: { q } })
+}
 </script>
 
 <template>
@@ -40,8 +49,9 @@ const keyword = ref('')
       <input
         v-model="keyword"
         type="text"
-        placeholder="搜索音乐、MV、歌单、用户"
+        placeholder="搜索歌曲、歌手"
         class="w-full bg-transparent text-[18px] text-ncm-fg outline-none placeholder:text-ncm-fainter"
+        @keyup.enter="onSearch"
       />
     </div>
 

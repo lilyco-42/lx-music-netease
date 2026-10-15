@@ -8,6 +8,7 @@ import { useRoute } from 'vue-router'
 import Sidebar from './components/layout/Sidebar.vue'
 import TopBar from './components/layout/TopBar.vue'
 import PlayBar from './components/layout/PlayBar.vue'
+import AudioHost from './components/AudioHost.vue'
 
 const route = useRoute()
 /** 播放器模式为独立全屏界面（实测深色截图） */
@@ -15,6 +16,9 @@ const isPlayerMode = computed(() => route.name === 'player')
 </script>
 
 <template>
+  <!-- <audio> 宿主：全应用只应存在一个，放在最外层避免路由切换时被销毁 -->
+  <AudioHost />
+
   <!-- 播放器模式：全屏，无左右栏 -->
   <RouterView v-if="isPlayerMode" />
 

@@ -5,34 +5,71 @@
  * 左侧歌名/歌手左边距 50px；中央控制区中心 x=960；播放按钮 52x52 圆形
  * 右侧从 x≈1642 起：音质 / 词 / 音量 / 更多
  */
-import { ref, computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
+import { usePlayer } from '@/lib/player'
 
 const router = useRouter()
-const playing = ref(true)
-const progress = ref(60) // 实测约 60%
-const volume = ref(70)
+const player = usePlayer()
 
-const progressStyle = computed(() => ({ width: `${progress.value}%` }))
+const track = computed(() => player.current.value)
+const playing = computed(() => player.state.playing)
+
+/** 进度：没有时长信息时按 0 处理，避免 NaN 宽度 */
+const progress = computed(() => {
+  const { currentTime, duration } = player.state
+  if (!duration || !Number.isFinite(duration) || duration <= 0) return 0
+  return Math.min(100, Math.max(0, (currentTime / duration) * 100))
+})
+
+const volume = computed({
+  get: () => Math.round(player.state.volume * 100),
+  set: v => player.setVolume(Number(v) / 100),
+})
+
+function fmtTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) sec = 0
+  const t = Math.floor(sec)
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
+}
+
+const timeText = computed(() =>
+  track.value ? `${fmtTime(player.state.currentTime)} / ${fmtTime(player.state.duration)}` : '')
+
+/** 音质循环切换：点一下换下一档 */
+const QUALITIES = ['128k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'master'] as const
+const qualityLabel = computed(() => ({
+  '128k': '标准', '320k': '极高', flac: '无损', flac24bit: 'Hi-Res', hires: 'Hi-Res',
+  atmos: '沉浸环绕', master: '超清母带',
+}[player.state.quality] ?? player.state.quality))
+
+function cycleQuality(): void {
+  const at = QUALITIES.indexOf(player.state.quality)
+  const nextQ = QUALITIES[(at + 1) % QUALITIES.length]!
+  void player.setQuality(nextQ)
+}
+
+/** 播放失败时把原因显示出来（版权/VIP 等），而不是静默什么都不发生 */
+const error = computed(() => player.state.error)
 </script>
 
 <template>
   <footer class="relative flex items-center bg-ncm-bottombar">
     <!-- 进度条：贴顶，高 4px，全宽 -->
     <div class="absolute inset-x-0 top-0 h-[4px] bg-ncm-divider">
-      <div class="h-full bg-ncm-progress" :style="progressStyle" />
+      <div class="h-full bg-ncm-progress" :style="{ width: progress + '%' }" />
     </div>
 
     <!-- 左侧歌曲信息：左边距 50px -->
     <div class="flex w-[430px] shrink-0 items-center gap-4 pl-[50px]">
       <div class="min-w-0">
         <div class="flex items-center gap-1.5">
-          <span class="truncate text-[18px] text-ncm-fg">나만 바라봐</span>
-          <span class="shrink-0 rounded-[3px] border border-ncm-accent px-1 text-[10px] leading-4 text-ncm-accent">VIP</span>
-          <span class="shrink-0 rounded-[3px] border border-ncm-faint px-1 text-[10px] leading-4 text-ncm-faint">试听</span>
+          <span class="truncate text-[18px] text-ncm-fg">{{ track ? track.name : '未在播放' }}</span>
         </div>
-        <div class="mt-[7px] text-[17px] text-ncm-faint">TAEYANG</div>
+        <div class="mt-[7px] truncate text-[17px] text-ncm-faint">{{ track ? track.singer : '双击歌曲开始播放' }}</div>
+        <div v-if="error" class="mt-1 truncate text-[12px] text-ncm-accent">{{ error }}</div>
+        <div v-else-if="timeText" class="mt-1 text-[12px] text-ncm-fainter">{{ timeText }}</div>
       </div>
 
       <!-- 爱心 + 计数，评论 + 计数 -->
@@ -62,7 +99,7 @@ const progressStyle = computed(() => ({ width: `${progress.value}%` }))
       </button>
 
       <!-- 上一首 -->
-      <button type="button" class="text-ncm-fg/80 hover:text-ncm-fg" aria-label="上一首">
+      <button type="button" class="text-ncm-fg/80 hover:text-ncm-fg" aria-label="上一首" @click="player.prev()">
         <svg viewBox="0 0 24 24" class="size-[26px] fill-current"><path d="M6 5h2v14H6zM20 5v14L9 12z" /></svg>
       </button>
 
@@ -71,14 +108,15 @@ const progressStyle = computed(() => ({ width: `${progress.value}%` }))
         variant="default"
         class="size-[52px] rounded-full p-0 transition-transform hover:scale-105"
         :aria-label="playing ? '暂停' : '播放'"
-        @click="playing = !playing"
+        :disabled="!track"
+        @click="player.toggle()"
       >
         <svg v-if="playing" viewBox="0 0 24 24" class="size-6 fill-current"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
         <svg v-else viewBox="0 0 24 24" class="size-6 fill-current"><path d="M8 5v14l11-7z" /></svg>
       </Button>
 
       <!-- 下一首 -->
-      <button type="button" class="text-ncm-fg/80 hover:text-ncm-fg" aria-label="下一首">
+      <button type="button" class="text-ncm-fg/80 hover:text-ncm-fg" aria-label="下一首" @click="player.next()">
         <svg viewBox="0 0 24 24" class="size-[26px] fill-current"><path d="M16 5h2v14h-2zM4 5v14l11-7z" /></svg>
       </button>
 
@@ -92,8 +130,8 @@ const progressStyle = computed(() => ({ width: `${progress.value}%` }))
 
     <!-- 右侧工具区：从 x≈1642 起 -->
     <div class="flex w-[430px] shrink-0 items-center justify-end gap-[29px] pr-[49px] text-ncm-faint">
-      <span class="text-[14px] text-ncm-fg/70">极高</span>
-      <button type="button" class="text-[15px] hover:text-ncm-fg" aria-label="音质">+</button>
+      <span class="text-[14px] text-ncm-fg/70">{{ qualityLabel }}</span>
+      <button type="button" class="text-[15px] hover:text-ncm-fg" aria-label="切换音质" @click="cycleQuality">+</button>
       <button
         type="button"
         class="text-[15px] hover:text-ncm-fg"
