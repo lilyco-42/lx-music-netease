@@ -35,14 +35,28 @@ def sha(p):
             h.update(b)
     return h.hexdigest()
 
+def norm(s):
+    """把文件名归一化后比较：空格与点号等价。
+
+    electron-builder 的产物名随配置变过（"LX Music-..." -> "LX.Music-..."），
+    归一化后新旧命名都能匹配上，脚本不会因为改了 artifactName 就失效。
+    """
+    return s.replace(' ', '.').lower()
+
+
 def pick(*subs):
-    """在 stage 里找第一个文件名包含所有子串的文件。"""
+    """在 stage 里找第一个文件名（归一化后）包含所有子串的文件。"""
     for fn in files:
-        if all(s in fn for s in subs):
+        n = norm(fn)
+        if all(norm(s) in n for s in subs):
             return fn
     return None
 
 def entry(fn, platform, plat_label, arch_note):
+    if ' ' in fn:
+        # 空格在 URL 中必须转义成 %20，直链很容易被二次编码后 404。
+        # 这里不直接失败，但要让日志里看得见，便于回头修 artifactName。
+        print('WARNING: filename contains a space, url-unsafe: %s' % fn)
     p = os.path.join(stage, fn)
     return {
         'platform': plat_label,
@@ -66,6 +80,7 @@ print('apk', apk, '| ipa', ipa, '| appimg', appimg)
 
 # 版本号从 tag 里取：v0.1.0-20261015 -> 0.1.0；取不到就退回 tag 本身
 ver = tag[1:].split('-')[0] if tag.startswith('v') else tag
+print('tag=%s version=%s' % (tag, ver))
 common = {
     'license': 'Apache-2.0',
     'repository': REPO,

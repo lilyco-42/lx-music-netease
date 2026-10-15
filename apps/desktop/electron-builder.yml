@@ -2,6 +2,12 @@ appId: top.lain42.lxmusic
 productName: LX Music
 copyright: Copyright © 2026 lain42
 
+# 关于文件名：显示名（productName）保留空格，但 **artifactName 一律用
+# "LX.Music" 这个不带空格的字面量**，不要写成 ${productName}。
+# 因为 ${productName} = "LX Music"，产物会叫 "LX Music-0.1.0-windows-setup.exe"，
+# 空格在 URL 里必须转义成 %20；下载页的直链一旦被浏览器/下载器二次编码就会 404。
+# 用点号代替空格，文件名全平台安全。
+
 # 必须显式指定：本仓库用 node-linker=hoisted，electron 被提升到仓库根的
 # node_modules，electron-builder 从 apps/desktop 向上探测不到，会报
 # "Cannot compute electron version from installed node modules"。
@@ -30,7 +36,7 @@ win:
       arch: [x64]
     - target: portable
       arch: [x64]
-  artifactName: ${productName}-${version}-windows-${arch}.${ext}
+  artifactName: LX.Music-${version}-windows-${arch}.${ext}
 
 msi:
   oneClick: false
@@ -38,7 +44,7 @@ msi:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: LX Music
-  artifactName: ${productName}-${version}-windows-${arch}.msi
+  artifactName: LX.Music-${version}-windows-${arch}.msi
 
 nsis:
   oneClick: false
@@ -47,7 +53,7 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: LX Music
-  artifactName: ${productName}-${version}-windows-setup.${ext}
+  artifactName: LX.Music-${version}-windows-setup.${ext}
 
 mac:
   icon: build/icon.png
@@ -55,7 +61,7 @@ mac:
   target:
     - target: dmg
       arch: [x64, arm64]
-  artifactName: ${productName}-${version}-macos-${arch}.${ext}
+  artifactName: LX.Music-${version}-macos-${arch}.${ext}
 
 dmg:
   # 必须带 ${arch}：x64 与 arm64 两个 DMG 是并发构建的，若卷名相同
@@ -71,4 +77,4 @@ linux:
   target:
     - target: AppImage
       arch: [x64]
-  artifactName: ${productName}-${version}-linux-${arch}.${ext}
+  artifactName: LX.Music-${version}-linux-${arch}.${ext}
