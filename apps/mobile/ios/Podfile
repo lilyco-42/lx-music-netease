@@ -36,5 +36,20 @@ target 'LXMusic' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # react-native-track-player 的 podspec 里写的是 s.swift_version = "4.2"
+    # （它的依赖 SwiftAudioEx 也是）。Swift 4 语言模式编译出来的目标文件会带上
+    # __swift_FORCE_LOAD_$_swiftCompatibility56 这个 autolink 符号，而新版 Xcode
+    # 的工具链里已经没有对应的 libswiftCompatibility56，链接阶段直接报：
+    #   Undefined symbols for architecture arm64:
+    #     "__swift_FORCE_LOAD_$_swiftCompatibility56", referenced from:
+    #         ... in libSwiftAudioEx.a[3](AudioItem.o)
+    #         ... in libreact-native-track-player.a[4](Capabilities.o)
+    # 把所有 pod 的 Swift 语言模式提到 5.0，编译器就不再产生这个符号。
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        build_config.build_settings['SWIFT_VERSION'] = '5.0'
+      end
+    end
   end
 end
