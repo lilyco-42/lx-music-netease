@@ -9,7 +9,7 @@ import {
   ActivityIndicator, Linking, Pressable, ScrollView, Text, TextInput, View,
 } from 'react-native'
 import { ANNUAL_PRICE_CNY, SHOP_URL } from '@lxmn/core'
-import type { MembershipStatus } from '@lxmn/core'
+import type { MembershipStatus, ApplyResult } from '@lxmn/core'
 import { activate, status as fetchStatus, deactivate } from '../license'
 import { colors, topInset } from '../theme'
 
@@ -31,6 +31,7 @@ export default function MembershipScreen() {
   const [link, setLink] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<MembershipStatus | null>(null)
+  const [applyResult, setApplyResult] = useState<ApplyResult | null>(null)
   const [error, setError] = useState('')
 
   async function onActivate() {
@@ -42,8 +43,9 @@ export default function MembershipScreen() {
     setError('')
     setResult(null)
     try {
-      const st = await activate(link.trim())
+      const { status: st, applied } = await activate(link.trim())
       setResult(st)
+      setApplyResult(applied)
       if (st.state === 'expired') setError('会员已过期，请续费后重新获取订阅链接')
       if (st.state === 'invalid') setError(st.reason)
       if (st.state === 'active') setLink('')
@@ -69,6 +71,7 @@ export default function MembershipScreen() {
   async function onDeactivate() {
     await deactivate()
     setResult({ state: 'none' })
+    setApplyResult(null)
     setError('')
   }
 
@@ -191,7 +194,7 @@ export default function MembershipScreen() {
                   到期时间：{fmtDate(result.plan.expiresAt)}
                 </Text>
                 <Text style={{ color: colors.muted, fontSize: 13, marginTop: 10, marginBottom: 4 }}>
-                  已解锁音源（{result.sources.length}）
+                  订阅包含的音源（{result.sources.length}）
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                   {result.sources.map(s => (
@@ -200,6 +203,18 @@ export default function MembershipScreen() {
                     </View>
                   ))}
                 </View>
+                {/* 订阅清单是「产品计划」，客户端未必都已实现。
+                    不把未实现的算作已解锁，避免用户以为能听却搜不到歌。 */}
+                {applyResult && applyResult.applied.length ? (
+                  <Text style={{ color: colors.fainter, fontSize: 12, marginTop: 10 }}>
+                    本次已应用：{applyResult.applied.join('、')}
+                  </Text>
+                ) : null}
+                {applyResult && applyResult.unavailable.length ? (
+                  <Text style={{ color: '#c88a3a', fontSize: 12, marginTop: 6 }}>
+                    暂未支持：{applyResult.unavailable.join('、')}（订阅包含，但当前版本尚未内置）
+                  </Text>
+                ) : null}
                 <Pressable onPress={onDeactivate} style={{ marginTop: 16 }}>
                   <Text style={{ color: colors.fainter, fontSize: 13 }}>退出会员</Text>
                 </Pressable>

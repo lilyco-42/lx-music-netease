@@ -8,7 +8,7 @@
 import { onMounted, ref } from 'vue'
 import { useMembership } from '../lib/membership'
 
-const { status, busy, error, applied, isActive, plan, sources, restore, activate, refresh, clear, openShop,
+const { status, busy, error, applyResult, isActive, plan, sources, restore, activate, refresh, clear, openShop,
         SHOP_URL, ANNUAL_PRICE_CNY } = useMembership()
 
 const link = ref('')
@@ -112,7 +112,7 @@ onMounted(restore)
           <p class="mt-2 text-[15px] text-ncm-muted">{{ plan?.name }}</p>
           <p class="mt-1 text-[14px] text-ncm-faint">到期时间：{{ fmtDate(plan?.expiresAt ?? '') }}</p>
 
-          <p class="mt-4 text-[14px] text-ncm-faint">已解锁音源（{{ sources.length }}）</p>
+          <p class="mt-4 text-[14px] text-ncm-faint">订阅包含的音源（{{ sources.length }}）</p>
           <div class="mt-2 flex flex-wrap gap-2">
             <span
               v-for="s in sources"
@@ -120,8 +120,13 @@ onMounted(restore)
               class="rounded-[6px] bg-white px-2.5 py-1 text-[13px] text-ncm-fg"
             >{{ s.name || s.id }}</span>
           </div>
-          <p v-if="applied.length" class="mt-3 text-[12px] text-ncm-fainter">
-            本次已应用：{{ applied.join('、') }}
+          <p v-if="applyResult.applied.length" class="mt-3 text-[12px] text-ncm-fainter">
+            本次已应用：{{ applyResult.applied.join('、') }}
+          </p>
+          <!-- 订阅清单是「产品计划」，客户端未必都已实现。
+               不把未实现的算作已解锁，避免用户以为能听却搜不到歌。 -->
+          <p v-if="applyResult.unavailable.length" class="mt-3 text-[12px] text-[#c88a3a]">
+            暂未支持：{{ applyResult.unavailable.join('、') }}（订阅包含，但当前版本尚未内置）
           </p>
           <button type="button" class="mt-4 text-[14px] text-ncm-fainter hover:text-ncm-accent" @click="clear">
             退出会员

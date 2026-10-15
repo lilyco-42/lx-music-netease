@@ -5,15 +5,15 @@
  * 拿到订阅链接 -> 粘进客户端 -> 一键补全全部第三方音源。
  */
 import { SubscriptionClient, SHOP_URL, ANNUAL_PRICE_CNY } from '@lxmn/core'
-import type { MembershipStatus } from '@lxmn/core'
+import type { MembershipStatus, ApplyResult } from '@lxmn/core'
 
 const client = new SubscriptionClient()
 
 /** 激活订阅：拉取 -> 校验 -> 应用音源 */
-export async function activate(link: string): Promise<MembershipStatus> {
+export async function activate(link: string): Promise<{ status: MembershipStatus; applied: ApplyResult }> {
   const doc = await client.fetch(link)
-  await client.apply(doc)
-  return client.status()
+  const applied = await client.apply(doc)
+  return { status: await client.status(), applied }
 }
 
 /** 查询当前会员状态（离线可用） */

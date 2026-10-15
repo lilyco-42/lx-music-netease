@@ -9,7 +9,7 @@
  */
 import { getPlatform } from '../registry'
 import type { SourceId, Quality } from '../types'
-import { registerSource, setSupportQuality } from '../sources/registry'
+import { registerSource, setSupportQuality, hasSource } from '../sources/registry'
 import type {
   MembershipPlan,
   MembershipStatus,
@@ -79,6 +79,7 @@ export function parseSubscriptionDocument(input: unknown): SubscriptionDocument 
       sha256: s.sha256 ? String(s.sha256) : undefined,
       version: s.version ? String(s.version) : undefined,
       qualitys: Array.isArray(s.qualitys) ? s.qualitys.map(String) : undefined,
+      implemented: typeof s.implemented === 'boolean' ? s.implemented : undefined,
       note: s.note ? String(s.note) : undefined,
     }))
     .filter(s => s.id)
@@ -183,27 +184,52 @@ export class SubscriptionClient {
 
   /**
    * 把订阅里的音源注册进内核。
-   * 返回实际生效的音源 id 列表。
    *
-   * builtin 类型由宿主提前注册（见各音源的 installXxxSource）；
-   * manifest / script 类型在此处按需加载。
+   * 返回值刻意区分「真的能用了」和「订阅里写了但内核没有实现」：
+   * 服务端下发的清单是**产品能力**（我们打算提供哪些音源），
+   * 而客户端这边只有真正注册过的音源才可能出歌。
+   *
+   * 早期实现把订阅里的 builtin 全部算作「已应用」，于是界面上显示
+   * 7 个音源已解锁、实际只有 wy 能搜到歌 —— 属于对用户撒谎。这里改成
+   * 逐个用 hasSource() 核实，未实现的一律进 unavailable。
    */
-  async apply(doc: SubscriptionDocument): Promise<string[]> {
+  async apply(doc: SubscriptionDocument): Promise<ApplyResult> {
     const applied: string[] = []
+    const unavailable: string[] = []
+    const skipped: string[] = []
+
     for (const s of doc.sources) {
       if (s.type === 'script' && !this.allowRemoteScripts) {
         // 远程脚本默认不执行：需要用户显式同意
+        skipped.push(s.id)
         continue
       }
-      if (s.type === 'builtin') {
-        if (s.qualitys?.length) {
-          setSupportQuality(s.id as SourceId, s.qualitys as Quality[])
-        }
-        applied.push(s.id)
+      if (s.type !== 'builtin') {
+        // manifest / script 需要宿主提供加载器，内核不擅自执行
+        skipped.push(s.id)
+        continue
       }
+      if (!hasSource(s.id as SourceId)) {
+        unavailable.push(s.id)
+        continue
+      }
+      if (s.qualitys?.length) {
+        setSupportQuality(s.id as SourceId, s.qualitys as Quality[])
+      }
+      applied.push(s.id)
     }
-    return applied
+    return { applied, unavailable, skipped }
   }
+}
+
+/** apply() 的结果：分清「可用 / 订阅里有但未实现 / 本次跳过」 */
+export interface ApplyResult {
+  /** 真正注册进内核、可以出歌的音源 */
+  applied: string[]
+  /** 订阅里声明了、但当前客户端没有实现，因此不可用 */
+  unavailable: string[]
+  /** 按策略跳过（如未开启的远程脚本） */
+  skipped: string[]
 }
 
 export { normalizeUrl }

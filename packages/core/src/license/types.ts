@@ -39,6 +39,13 @@ export interface SubscribedSource {
   version?: string
   /** 该音源支持的音质 */
   qualitys?: string[]
+  /**
+   * 服务端声称客户端内核是否已内置该音源的真实实现。
+   *
+   * 仅作展示与交叉校验用 —— 判定「能不能用」的**权威依据**始终是客户端的
+   * hasSource()：服务端的声明可能滞后于客户端版本，反之亦然。
+   */
+  implemented?: boolean
   /** 备注 / 说明 */
   note?: string
 }

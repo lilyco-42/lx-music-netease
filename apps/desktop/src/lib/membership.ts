@@ -8,15 +8,15 @@
  */
 import { computed, ref } from 'vue'
 import { SubscriptionClient, SHOP_URL, ANNUAL_PRICE_CNY } from '@lxmn/core'
-import type { MembershipStatus } from '@lxmn/core'
+import type { MembershipStatus, ApplyResult } from '@lxmn/core'
 
 const client = new SubscriptionClient()
 const status = ref<MembershipStatus>({ state: 'none' })
 const busy = ref(false)
 const error = ref('')
 
-/** 已生效的音源 id */
-const applied = ref<string[]>([])
+/** 上次 apply() 的结果：可用 / 未实现 / 跳过 */
+const applyResult = ref<ApplyResult>({ applied: [], unavailable: [], skipped: [] })
 
 export function useMembership() {
   const isActive = computed(() => status.value.state === 'active')
@@ -27,7 +27,7 @@ export function useMembership() {
   async function restore(): Promise<void> {
     status.value = await client.restore()
     if (status.value.state === 'active') {
-      applied.value = await client.apply({ ok: true, schema: 1, plan: status.value.plan, sources: status.value.sources })
+      applyResult.value = await client.apply({ ok: true, schema: 1, plan: status.value.plan, sources: status.value.sources })
     }
   }
 
@@ -37,7 +37,7 @@ export function useMembership() {
     error.value = ''
     try {
       const doc = await client.fetch(link.trim())
-      applied.value = await client.apply(doc)
+      applyResult.value = await client.apply(doc)
       status.value = { state: 'active', plan: doc.plan, sources: doc.sources }
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
@@ -60,7 +60,7 @@ export function useMembership() {
   /** 退出会员 */
   async function clear(): Promise<void> {
     await client.clear()
-    applied.value = []
+    applyResult.value = { applied: [], unavailable: [], skipped: [] }
     status.value = { state: 'none' }
     error.value = ''
   }
@@ -73,7 +73,7 @@ export function useMembership() {
   }
 
   return {
-    status, busy, error, applied, isActive, plan, sources,
+    status, busy, error, applyResult, isActive, plan, sources,
     restore, activate, refresh, clear, openShop,
     SHOP_URL, ANNUAL_PRICE_CNY,
   }

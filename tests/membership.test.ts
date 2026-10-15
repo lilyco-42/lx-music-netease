@@ -3,6 +3,7 @@ import {
   setPlatform, createPortablePlatform, portableCrypto,
   SubscriptionClient, parseSubscriptionDocument, isPlanActive, normalizeUrl,
   SHOP_URL, ANNUAL_PRICE_CNY, type StorageAdapter,
+  installWySource, resetSources,
 } from '@lxmn/core'
 
 const store = new Map<string, string>()
@@ -110,7 +111,15 @@ describe('isPlanActive', () => {
 })
 
 describe('SubscriptionClient', () => {
-  beforeEach(() => { store.clear(); requested = [] })
+  beforeEach(() => {
+  store.clear()
+  requested = []
+  // apply() 现在会用 hasSource() 核实音源是否真的注册过。
+  // 这里只装 wy —— 正是当前客户端真实具备的能力，kw/kg 故意不装，
+  // 用来验证「订阅里有、内核没有」的音源会被如实归入 unavailable。
+  resetSources()
+  installWySource()
+})
 
   it('fetches a subscription and reports active membership', async () => {
     setPlatform(makePlatform(() => ({ status: 200, body: JSON.stringify(doc) })))
@@ -172,9 +181,35 @@ describe('SubscriptionClient', () => {
     setPlatform(makePlatform(() => ({ status: 200, body: JSON.stringify(doc) })))
     const c = new SubscriptionClient()
     const d = await c.fetch('https://lain42.top/studio/api/music/sub/tok12345')
-    const applied = await c.apply(d)
+    const { applied, skipped } = await c.apply(d)
     expect(applied).toEqual(['wy'])
     expect(applied).not.toContain('kw')
+    // manifest / 未开启的 script 都进 skipped，而不是谎报成已应用
+    expect(skipped).toEqual(['tx', 'kw'])
+  })
+
+  /**
+   * 回归测试：订阅里声明了、但内核没实现的音源，不能被算作「已解锁」。
+   *
+   * 服务端下发的是产品计划（7 个音源），客户端当时只移植了 wy。
+   * 早期 apply() 把所有 builtin 都 push 进 applied，界面就显示 7 个音源已解锁，
+   * 用户实际却只有 wy 能搜到歌 —— 必须把这类音源单独报出来。
+   */
+  it('reports declared-but-unimplemented builtin sources as unavailable', async () => {
+    const declared = {
+      ...doc,
+      sources: [
+        { id: 'wy', name: '网易云音乐', type: 'builtin', qualitys: ['flac'] },
+        { id: 'kw', name: '酷我音乐', type: 'builtin', qualitys: ['flac'] },
+        { id: 'kg', name: '酷狗音乐', type: 'builtin', qualitys: ['flac'] },
+      ],
+    }
+    setPlatform(makePlatform(() => ({ status: 200, body: JSON.stringify(declared) })))
+    const c = new SubscriptionClient()
+    const d = await c.fetch('https://lain42.top/studio/api/music/sub/tok12345')
+    const r = await c.apply(d)
+    expect(r.applied).toEqual(['wy'])
+    expect(r.unavailable).toEqual(['kw', 'kg'])
   })
 
   it('applies script sources only when the user opts in', async () => {
