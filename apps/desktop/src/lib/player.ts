@@ -60,6 +60,12 @@ export function setPlaybackHandler(fn: ((url: string) => Promise<void>) | null):
   playUrl = fn
 }
 
+/** 跳转播放位置的方式同样由组件注入（内核不认识 <audio>） */
+let seekHandler: ((time: number) => void) | null = null
+export function setSeekHandler(fn: ((time: number) => void) | null): void {
+  seekHandler = fn
+}
+
 const current = computed<MusicItem | null>(() => state.queue[state.index] ?? null)
 
 /** 已安装的音源里，哪个能搜（用于提示用户当前可用范围） */
@@ -162,8 +168,30 @@ export function usePlayer() {
     if (item) await play(item)
   }
 
+  /**
+   * 播放 / 暂停。
+   *
+   * 关键点：**不要在这里直接翻转 state.playing**，而是只在"当前没有曲目"时
+   * 才需要真正去取流播放。有曲目时交给 <audio> 的 play/pause 事件回灌，
+   * 否则会和 AudioHost 的 watch 形成互相打架的两个真相来源 ——
+   * 点了暂停、watch 又看到 playing=true 把音频播回去。
+   */
   function toggle(): void {
+    const item = current.value
+    if (!item) return
+    if (!state.url) {
+      // 还没取到地址（比如首次点播放），走完整的取流流程
+      void play(item)
+      return
+    }
     state.playing = !state.playing
+  }
+
+  /** 跳转到指定秒数；由 <audio> 宿主真正执行 */
+  function seek(time: number): void {
+    const t = Math.max(0, Number(time) || 0)
+    state.currentTime = t
+    if (seekHandler) seekHandler(t)
   }
 
   /** 切换音质后立刻用新音质重取当前曲目 */
@@ -178,7 +206,7 @@ export function usePlayer() {
     current,
     availableSources,
     qualityOrder,
-    search, play, next, prev, toggle, setQuality,
+    search, play, next, prev, toggle, seek, setQuality,
     /** 组件回灌：<audio> 的进度/时长 */
     reportTime: (t: number) => { state.currentTime = t },
     reportDuration: (d: number) => { state.duration = d },

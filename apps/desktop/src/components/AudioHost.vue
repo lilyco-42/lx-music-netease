@@ -6,7 +6,7 @@
  * 再把进度/时长/播放状态回灌给 player store。
  */
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { setPlaybackHandler, usePlayer } from '@/lib/player'
+import { setPlaybackHandler, setSeekHandler, usePlayer } from '@/lib/player'
 
 const player = usePlayer()
 const el = ref<HTMLAudioElement | null>(null)
@@ -22,7 +22,17 @@ onMounted(() => {
   })
 })
 
-onBeforeUnmount(() => setPlaybackHandler(null))
+onMounted(() => {
+  setSeekHandler((t: number) => {
+    const a = el.value
+    if (a && a.src) a.currentTime = t
+  })
+})
+
+onBeforeUnmount(() => {
+  setPlaybackHandler(null)
+  setSeekHandler(null)
+})
 
 watch(() => player.state.playing, p => {
   const a = el.value
