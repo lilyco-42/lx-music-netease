@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
+
 /**
  * 首页「推荐」—— 实测规格：
  * 频道卡 7 张、207x266（比例 0.78）、间距 20px，整图背景 + 底部蒙层
@@ -6,28 +8,45 @@
  * 精选活动 4 张横幅、373x209、间距 24~25px
  * 区块纵向间距 38~47px
  */
+/**
+ * 频道卡：点进去就是一次真实搜索，不再是无处可去的色块。
+ * 每个卡片带一个 keyword，点击后跳 /search?q=<keyword>。
+ * tone 只用来区分视觉，不承载语义。
+ */
 const channels = [
-  { title: '每日推荐', desc: '根据你的口味生成', tone: '#e57373' },
-  { title: '私人漫游', desc: '无限漫游', tone: '#64b5f6', playing: true },
-  { title: '私人雷达', desc: '为你精选', tone: '#9575cd' },
-  { title: '嘻哈/说唱日推', desc: '每日更新', tone: '#4db6ac' },
-  { title: '心情氛围歌单', desc: '此刻的心情', tone: '#ffb74d' },
-  { title: '欧美流行日推', desc: '每日更新', tone: '#7986cb' },
-  { title: '民谣日推', desc: '每日更新', tone: '#a1887f' },
+  { title: '每日推荐', desc: '根据你的口味生成', tone: '#e57373', keyword: '热门' },
+  { title: '私人漫游', desc: '无限漫游', tone: '#64b5f6', keyword: '华语流行' },
+  { title: '私人雷达', desc: '为你精选', tone: '#9575cd', keyword: '轻音乐' },
+  { title: '嘻哈/说唱日推', desc: '每日更新', tone: '#4db6ac', keyword: '说唱' },
+  { title: '心情氛围歌单', desc: '此刻的心情', tone: '#ffb74d', keyword: '治愈' },
+  { title: '欧美流行日推', desc: '每日更新', tone: '#7986cb', keyword: '欧美流行' },
+  { title: '民谣日推', desc: '每日更新', tone: '#a1887f', keyword: '民谣' },
 ]
 
-// 9 列歌单，封面 156x157
-const playlists = Array.from({ length: 9 }, (_, i) => ({
+const router = useRouter()
+
+function openChannel(keyword: string): void {
+  void router.push({ name: 'search', query: { q: keyword } })
+}
+
+/**
+ * 推荐歌单：标题是固定的（网易云首页本来也是人工运营位），
+ * 但点进去会真的搜出歌单名对应的歌，不再是死链接。
+ */
+const playlists = [
+  '华语流行精选', '轻音乐助眠', '深夜电台', '电子舞曲', '摇滚经典',
+  '民谣故事', '古典名曲', '爵士夜曲', '影视原声',
+].map((title, i) => ({ id: i, title }))
+
+/** 精选活动：同样接到搜索，点击有反馈 */
+const activities = ['新歌抢先听', '会员福利社', '音乐人计划', '线下演出'].map((title, i) => ({
   id: i,
-  title: ['华语流行精选', '轻音乐助眠', '深夜电台', '电子舞曲', '摇滚经典',
-          '民谣故事', '古典名曲', '爵士夜曲', '影视原声'][i] ?? `歌单 ${i + 1}`,
-  playCount: `${(Math.random() * 900 + 100).toFixed(0)}万`,
+  title,
 }))
 
-const activities = Array.from({ length: 4 }, (_, i) => ({
-  id: i,
-  title: ['新歌抢先听', '会员福利社', '音乐人计划', '线下演出'][i] ?? `活动 ${i + 1}`,
-}))
+function openPlaylist(title: string): void {
+  void router.push({ name: 'search', query: { q: title } })
+}
 </script>
 
 <template>
@@ -40,6 +59,7 @@ const activities = Array.from({ length: 4 }, (_, i) => ({
           :key="ch.title"
           class="group relative h-[266px] w-[207px] shrink-0 cursor-pointer overflow-hidden rounded-channel"
           :style="{ background: ch.tone }"
+          @click="openChannel(ch.keyword)"
         >
           <!-- 整图背景的替代：色块 + 顶部标题 -->
           <div class="absolute inset-0 bg-gradient-to-b from-black/5 to-black/45" />
@@ -55,13 +75,8 @@ const activities = Array.from({ length: 4 }, (_, i) => ({
           </div>
 
           <!-- 免费听 小标签 -->
-          <span class="absolute right-[10px] top-[10px] rounded-[3px] bg-white/85 px-1.5 text-[10px] leading-4 text-ncm-accent">
-            免费听
-          </span>
-
-          <!-- 悬停播放三角 -->
+          <!-- 悬停播放三角：始终存在，hover 才显形 -->
           <div
-            v-if="ch.playing"
             class="absolute bottom-[13px] right-[13px] flex size-[34px] items-center justify-center rounded-full bg-white/90 opacity-0 transition-opacity group-hover:opacity-100"
           >
             <svg viewBox="0 0 24 24" class="size-4 fill-ncm-accent-play"><path d="M8 5v14l11-7z" /></svg>
@@ -88,17 +103,10 @@ const activities = Array.from({ length: 4 }, (_, i) => ({
           v-for="pl in playlists"
           :key="pl.id"
           class="group w-[157px] shrink-0 cursor-pointer"
+          @click="openPlaylist(pl.title)"
         >
           <!-- 封面 156x157，圆角 7px -->
           <div class="relative h-[157px] w-[156px] overflow-hidden rounded-cover bg-ncm-fainter/40">
-            <!-- 播放量：左上角，耳机图标 + 12px 白字 -->
-            <div class="absolute left-2 top-2 flex items-center gap-1 text-white drop-shadow">
-              <svg viewBox="0 0 24 24" class="size-3 fill-current">
-                <path d="M12 3a8 8 0 0 0-8 8v6a2 2 0 0 0 2 2h2v-7H6v-1a6 6 0 1 1 12 0v1h-2v7h2a2 2 0 0 0 2-2v-6a8 8 0 0 0-8-8Z" />
-              </svg>
-              <span class="text-[12px]">{{ pl.playCount }}</span>
-            </div>
-
             <div class="absolute bottom-2 right-2 flex size-[30px] items-center justify-center rounded-full bg-white/90 opacity-0 transition-opacity group-hover:opacity-100">
               <svg viewBox="0 0 24 24" class="size-3.5 fill-ncm-accent-play"><path d="M8 5v14l11-7z" /></svg>
             </div>
@@ -122,6 +130,7 @@ const activities = Array.from({ length: 4 }, (_, i) => ({
           v-for="a in activities"
           :key="a.id"
           class="relative h-[209px] w-[373px] shrink-0 cursor-pointer overflow-hidden rounded-banner bg-gradient-to-br from-[#dbe3f5] to-[#f2dde6]"
+          @click="openPlaylist(a.title)"
         >
           <h3 class="absolute left-[18px] top-[16px] text-[20px] font-semibold text-ncm-fg">{{ a.title }}</h3>
         </article>
