@@ -31,6 +31,8 @@ const navMine = [
 const navMembership = { key: 'membership', label: '音乐会员', icon: 'vip' }
 /** 云同步入口：默认走 lain42.top，会员令牌直接复用 */
 const navSync = { key: 'sync', label: '云同步', icon: 'sync' }
+/** 好友入口：身份即订阅，和云同步同一个令牌 */
+const navFriends = { key: 'friends', label: '好友', icon: 'friends' }
 
 // 实测：创建的歌单 13
 const playlists = ref(
@@ -56,7 +58,7 @@ const ROUTE_HIGHLIGHT: Record<string, string> = { membership: 'membership', sync
           <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4.2a5.8 5.8 0 1 1 0 11.6 5.8 5.8 0 0 1 0-11.6Zm0 3.1a2.7 2.7 0 1 0 0 5.4 2.7 2.7 0 0 0 0-5.4Z" />
         </svg>
       </div>
-      <span class="text-[22px] font-semibold leading-[30px] text-ncm-fg">LX Music</span>
+      <span class="text-[22px] font-semibold leading-[30px] text-ncm-fg">Lyco Music</span>
     </div>
 
     <!-- 主导航 -->
@@ -104,6 +106,19 @@ const ROUTE_HIGHLIGHT: Record<string, string> = { membership: 'membership', sync
     >
       <span class="size-[18px] shrink-0 rounded-[3px] border-[1.5px] border-current opacity-80" />
       <span>{{ navSync.label }}</span>
+    </button>
+
+    <!-- 好友入口 -->
+    <button
+      type="button"
+      class="relative mx-[30px] mt-3 flex h-[45px] w-[206px] items-center gap-3 rounded-nav px-3.5 text-left text-[18px] leading-6 transition-colors"
+      :class="route.name === navFriends.key
+        ? 'bg-ncm-accent-nav text-white'
+        : 'text-ncm-muted hover:bg-black/5'"
+      @click="router.push({ name: navFriends.key })"
+    >
+      <span class="size-[18px] shrink-0 rounded-[3px] border-[1.5px] border-current opacity-80" />
+      <span>{{ navFriends.label }}</span>
     </button>
 
     <!-- 我的 -->

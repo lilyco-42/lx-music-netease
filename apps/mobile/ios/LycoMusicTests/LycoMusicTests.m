@@ -5,13 +5,13 @@
 #import <React/RCTRootView.h>
 
 #define TIMEOUT_SECONDS 600
-#define TEXT_TO_LOOK_FOR @"LX Music"
+#define TEXT_TO_LOOK_FOR @"Lyco Music"
 
-@interface LXMusicTests : XCTestCase
+@interface LycoMusicTests : XCTestCase
 
 @end
 
-@implementation LXMusicTests
+@implementation LycoMusicTests
 
 - (BOOL)findSubviewInView:(UIView *)view matching:(BOOL (^)(UIView *view))test
 {

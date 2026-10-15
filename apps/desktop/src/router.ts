@@ -7,6 +7,7 @@ const routes = [
   { path: '/membership', name: 'membership', component: () => import('./views/Membership.vue') },
   { path: '/sync', name: 'sync', component: () => import('./views/Sync.vue') },
   { path: '/my', name: 'my', component: () => import('./views/MyMusic.vue') },
+  { path: '/friends', name: 'friends', component: () => import('./views/Friends.vue') },
 ]
 
 export const router = createRouter({

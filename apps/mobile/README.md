@@ -1,4 +1,4 @@
-# LX Music · 移动端
+# Lyco Music · 移动端
 
 React Native 0.76 客户端，与桌面端共用同一套内核（`@lxmn/core`）。
 

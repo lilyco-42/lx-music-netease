@@ -16,8 +16,9 @@ import MyMusicScreen from './src/screens/MyMusicScreen'
 import { ensurePlatform } from './src/platform'
 import { setupPlayer, useTrackPlayerEvents } from './src/player'
 import { colors, TAB_BAR_HEIGHT, topInset } from './src/theme'
+import FriendsScreen from './src/screens/FriendsScreen'
 
-type TabKey = 'home' | 'search' | 'my' | 'player' | 'member' | 'sync'
+type TabKey = 'home' | 'search' | 'my' | 'player' | 'member' | 'sync' | 'friends'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'home', label: '首页' },
@@ -26,6 +27,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'player', label: '播放器' },
   { key: 'member', label: '会员' },
   { key: 'sync', label: '同步' },
+  { key: 'friends', label: '好友' },
 ]
 
 export default function App() {
@@ -64,6 +66,8 @@ export default function App() {
           <PlayerScreen />
         ) : tab === 'member' ? (
           <MembershipScreen />
+        ) : tab === 'friends' ? (
+          <FriendsScreen onNeedMembership={() => setTab('member')} />
         ) : (
           <SyncScreen />
         )}

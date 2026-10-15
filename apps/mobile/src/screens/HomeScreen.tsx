@@ -120,7 +120,7 @@ export default function HomeScreen({ onOpenSearch }: { onOpenSearch?: (keyword?:
         {/* 顶栏 */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 18 }}>
           <Logo size={34} />
-          <Text style={{ color: colors.fg, fontSize: 21, fontWeight: '600', flex: 1 }}>LX Music</Text>
+          <Text style={{ color: colors.fg, fontSize: 21, fontWeight: '600', flex: 1 }}>Lyco Music</Text>
           {/* 不传关键词：这是「去搜索页」而不是「搜某个词」 */}
           <Pressable onPress={() => onOpenSearch?.()} hitSlop={10}>
             <Text style={{ color: colors.accent, fontSize: 14 }}>搜索</Text>
