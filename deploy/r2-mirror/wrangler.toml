@@ -1,0 +1,10 @@
+name = "lyco-music-dl"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "lyco-music-dl"
+
+[observability]
+enabled = true
