@@ -99,6 +99,16 @@ if win:
         category='媒体工具', platforms=['windows'],
         mirror=entry(win, 'win', 'Windows x64 · 安装版', ''),
         **common))
+if msi:
+    # MSI 一直在服务器上（也一直挂在 GitHub Release 里），但之前只被 pick 出来
+    # 打印了一行日志，从没写进 manifest —— 下载页看不到，等于白构建。
+    items.append(dict(id='lx-music-windows-msi', name='LX Music（Windows MSI）',
+        summary='网易云音乐风格的开源音乐播放器，Windows MSI 安装包，适合企业批量部署与静默安装。',
+        category='媒体工具', platforms=['windows'],
+        mirror=entry(msi, 'win', 'Windows x64 · MSI 安装包', ''),
+        install='msiexec /i LX.Music-*.msi /qn',
+        note='MSI 包支持静默安装（msiexec /qn），适合批量部署；个人用户建议下载上面的 setup.exe 向导版。',
+        **common))
 if portable:
     items.append(dict(id='lx-music-windows-portable', name='LX Music（Windows 便携版）',
         summary='网易云音乐风格的开源音乐播放器，Windows 免安装便携版，解压即用，不写注册表。',
