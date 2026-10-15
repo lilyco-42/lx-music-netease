@@ -10,6 +10,7 @@ import { installMobilePlatform } from '@lxmn/platform-mobile'
 import {
   installWySource,
   installKwSource,
+  installMgSource,
   hasSource,
   type SourceId,
   type StorageAdapter,
@@ -19,6 +20,7 @@ import {
 const BUILTIN: { id: SourceId; install: () => void }[] = [
   { id: 'wy', install: installWySource },
   { id: 'kw', install: installKwSource },
+  { id: 'mg', install: installMgSource },
 ]
 
 /** 把 AsyncStorage 适配成内核的 StorageAdapter */
