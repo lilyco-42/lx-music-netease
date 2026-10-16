@@ -20,6 +20,7 @@ import {
   type HttpResponse,
   type StorageAdapter,
   type TimerAdapter,
+  APP_VERSION,
 } from '@lxmn/core'
 
 export interface RnBackgroundTimer {
@@ -132,7 +133,7 @@ export function createMobilePlatform(options: MobilePlatformOptions): PlatformAd
     timer: createRnTimer(options.backgroundTimer),
     storage: options.storage,
     decodeName: options.decodeName,
-    version: '0.1.0',
+    version: APP_VERSION,
   })
 }
 

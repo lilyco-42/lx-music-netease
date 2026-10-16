@@ -13,4 +13,10 @@ export * from './sync'
 export * from './library'
 export * from './sources'
 
-export const CORE_VERSION = '0.1.0'
+export const CORE_VERSION = '0.2.2'
+
+/**
+ * 应用对外版本号。与根 package.json 同源 —— 发版时两处一起改，
+ * tests/version-consistency.test.ts 会把所有声明点逐一比对，漏改就红。
+ */
+export const APP_VERSION = CORE_VERSION

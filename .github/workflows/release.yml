@@ -186,6 +186,9 @@ jobs:
           echo "LXMN_KEYSTORE_PATH=$RUNNER_TEMP/lxmn-release.p12" >> "$GITHUB_ENV"
           echo "signed=release" >> "$GITHUB_OUTPUT"
 
+      # 版本号只在根 package.json 维护一处，构建时注入 Android 清单。
+      # versionCode 必须单调递增（major*1000000 + minor*1000 + patch），
+      # 否则 Android 会拒绝安装「版本比已装包更低」的升级包。
       - name: Set Android version from root package
         shell: bash
         run: |
@@ -275,6 +278,19 @@ jobs:
       # Xcode 因此认为「这不是 Swift target」，不给链接器加工具链的 swift 搜索路径，
       # 于是 -lswiftCompatibility56 找不到实体，报 Undefined symbols。
       # 显式把工具链的 swift/iphoneos 目录加进 LIBRARY_SEARCH_PATHS 即可。
+      # 同样把 package.json 的版本注入 Xcode 工程：Info.plist 用的是
+      # $(MARKETING_VERSION)，不注入的话应用内版本会停在模板默认值（曾经是 1.0）。
+      # macos runner 上是 BSD sed，-i 后面必须跟一个空字符串参数。
+      - name: Inject version into Xcode project
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          CODE=$(node -e "const v=require('./package.json').version.split('.').map(Number);console.log(v[0]*10000+v[1]*100+(v[2]||0))")
+          PBX=apps/mobile/ios/LycoMusic.xcodeproj/project.pbxproj
+          sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = $VERSION;/g" "$PBX"
+          sed -i '' -E "s/CURRENT_PROJECT_VERSION = [^;]+;/CURRENT_PROJECT_VERSION = $CODE;/g" "$PBX"
+          grep -n "MARKETING_VERSION\|CURRENT_PROJECT_VERSION" "$PBX"
+
       - name: Build unsigned .app
         working-directory: apps/mobile/ios
         run: |

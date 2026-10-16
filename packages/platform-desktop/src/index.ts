@@ -11,6 +11,7 @@ import { inflate, deflate } from 'node:zlib'
 import { promisify } from 'node:util'
 import {
   setPlatform, type PlatformAdapter, type HttpRequestOptions, type HttpResponse,
+  APP_VERSION,
 } from '@lxmn/core'
 
 const inflateAsync = promisify(inflate)
@@ -129,7 +130,7 @@ export const desktopPlatform: PlatformAdapter = {
   timer: timerAdapter,
   storage: storageAdapter,
   codec: codecAdapter,
-  version: '0.1.0',
+  version: APP_VERSION,
 }
 
 /** 桌面端启动时调用一次即可 */

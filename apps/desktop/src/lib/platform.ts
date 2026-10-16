@@ -24,6 +24,7 @@ import {
   type HttpRequestOptions,
   type HttpResponse,
   type SourceId,
+  APP_VERSION,
 } from '@lxmn/core'
 
 /** preload 注入的原生桥 */
@@ -92,7 +93,7 @@ export function ensureDesktopPlatform(): void {
       name: 'web',
       http: createDesktopHttp(),
       storage: createWebStorage({ prefix: 'lxmn.' }),
-      version: '0.1.0',
+      version: APP_VERSION,
     }),
   )
 
