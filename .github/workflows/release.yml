@@ -360,6 +360,47 @@ jobs:
           ssh -i ~/.ssh/id_lain42 root@lain42.top \
             "python3 /tmp/publish-downloads.py '${{ steps.tag.outputs.name }}'"
 
+      # 镜像到 Cloudflare R2（可选）。R2 是 S3 兼容的，ubuntu runner 自带 aws cli。
+      # 未配置 R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY 时自动跳过 —— 下载页主源
+      # 是 lain42.top，缺镜像不该让发布失败。
+      - name: Mirror to Cloudflare R2
+        shell: bash
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -e
+          if [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then
+            echo 'R2 凭据未配置，跳过镜像（下载页仍走 lain42.top 主源）'
+            exit 0
+          fi
+          ACCOUNT="${R2_ACCOUNT_ID:-b34633d3c44c7b0d09ee26336a45ecd4}"
+          BUCKET="${R2_BUCKET:-lyco-music-dl}"
+          STAGE="lyco_music/${{ steps.tag.outputs.name }}"
+          export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+          export AWS_DEFAULT_REGION=auto
+          for f in release-files/*; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              *.exe|*.msi|*.dmg|*.apk|*.ipa|*.AppImage|*.zip|*.blockmap|*.yml)
+                aws s3 cp "$f" "s3://$BUCKET/$STAGE/" \
+                  --endpoint-url "https://$ACCOUNT.r2.cloudflarestorage.com" \
+                  --no-progress ;;
+            esac
+          done
+          # SHA256SUMS 是上一步在服务器上算的，取回来一起镜像，保证镜像自洽
+          scp -i ~/.ssh/id_lain42 \
+            "root@lain42.top:/var/www/studio/downloads/$STAGE/SHA256SUMS.txt" \
+            release-files/SHA256SUMS.txt 2>/dev/null || true
+          if [ -f release-files/SHA256SUMS.txt ]; then
+            aws s3 cp release-files/SHA256SUMS.txt "s3://$BUCKET/$STAGE/SHA256SUMS.txt" \
+              --endpoint-url "https://$ACCOUNT.r2.cloudflarestorage.com" --no-progress
+          fi
+          echo "R2 镜像完成：https://lyco-music-dl.m15178682641.workers.dev/$STAGE/"
+
       # 同一天重复发布时 tag 相同（v0.1.0-YYYYMMDD），而 action-gh-release
       # 在 tag 已存在时是**追加**资产而不是重建，上一轮的文件会残留
       # （实测残留了旧命名的 app-release.apk / LX-Music-unsigned.ipa，

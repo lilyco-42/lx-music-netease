@@ -14,6 +14,14 @@ import json, os, glob, hashlib, shutil, sys, time
 MAN = '/var/www/studio/downloads/manifest.json'
 HTML = '/var/www/studio/downloads/index.html'
 STAGE_ROOT = '/var/www/studio/downloads/lyco_music'
+
+# R2 边缘镜像（Cloudflare Worker 只读转发 lyco-music-dl 桶）。
+# 下载页同时给出 lain42.top 直链与 R2 镜像，海外/断点续传场景走镜像更快。
+# 需要停用时设 LYCO_R2_MIRROR=0。
+R2_MIRROR_BASE = os.environ.get(
+    'LYCO_R2_MIRROR_BASE',
+    'https://lyco-music-dl.m15178682641.workers.dev/lyco_music',
+)
 REPO = 'https://github.com/lilyco-42/lyco_music'
 
 if len(sys.argv) > 1 and sys.argv[1].strip():
@@ -58,13 +66,17 @@ def entry(fn, platform, plat_label, arch_note):
         # 这里不直接失败，但要让日志里看得见，便于回头修 artifactName。
         print('WARNING: filename contains a space, url-unsafe: %s' % fn)
     p = os.path.join(stage, fn)
-    return {
+    out = {
         'platform': plat_label,
         'file': fn,
         'size': os.path.getsize(p),
         'sha256': sha(p),
         'url': base_url + '/' + fn,
     }
+    if os.environ.get('LYCO_R2_MIRROR', '1') != '0':
+        # 镜像的 key 结构与主站一致：lyco_music/<tag>/<file>
+        out['r2Mirror'] = R2_MIRROR_BASE + '/' + tag + '/' + fn
+    return out
 
 win = pick('windows-setup.exe')
 msi = pick('windows-x64.msi')
