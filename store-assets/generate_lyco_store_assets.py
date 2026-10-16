@@ -2,12 +2,15 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import math, os, random, json, zipfile
 from functools import lru_cache
 
-OUT_DIR = '/mnt/data/lyco_music_store_assets/pngs'
+# 原脚本写死在 ChatGPT 沙箱路径（/mnt/data/... 与 Linux Noto 字体）上，
+# 出了沙箱就跑不起来。这里全部改成可用环境变量覆盖的本地路径。
+_HERE = os.path.dirname(os.path.abspath(__file__))
+OUT_DIR = os.environ.get('LYCO_OUT', os.path.join(_HERE, 'out'))
 os.makedirs(OUT_DIR, exist_ok=True)
 
-ICON_SRC = '/mnt/data/ghostwriter_images/generated/a_clean_high_contrast_minimalist_dark_app_icon_s_1.png'
-FONT_REG = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'
-FONT_BOLD = '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc'
+ICON_SRC = os.environ.get('LYCO_ICON', os.path.join(_HERE, 'icon', 'lyco_music_icon_1024.png'))
+FONT_REG = os.environ.get('LYCO_FONT_REG', 'C:\\Windows\\Fonts\\msyh.ttc')
+FONT_BOLD = os.environ.get('LYCO_FONT_BOLD', 'C:\\Windows\\Fonts\\msyhbd.ttc')
 
 DARK = {
     'bg': '#101010', 'surface': '#202020', 'float': '#303030', 'bottom': '#1d1d1d',
@@ -27,11 +30,63 @@ def rgba(hex_color, alpha=255):
 
 @lru_cache(maxsize=64)
 def font(size, bold=False):
-    return ImageFont.truetype(FONT_BOLD if bold else FONT_REG, int(size))
+    path = FONT_BOLD if bold else FONT_REG
+    try:
+        return ImageFont.truetype(path, int(size), index=0)
+    except TypeError:
+        return ImageFont.truetype(path, int(size))
+
+
+def ink_top(y, size, bold=False):
+    """anchor='la' 时文字的可见顶部：锚点是 ascender，CJK 字形只占 em 盒一部分。"""
+    a, _ = font(size, bold).getmetrics()
+    return y + (a - font(size, bold).size)
+
+
+def ink_bottom(y, size, bold=False):
+    """anchor='la' 时文字的可见底部（CJK 字形坐在基线上）。"""
+    a, _ = font(size, bold).getmetrics()
+    return y + a
+
+
+def below(y, size, bold, next_size, next_bold=False, gap=0.4):
+    """下一行的 y，使其可见顶部比上一行可见底部低 gap*next_size。
+    原脚本拿 textbbox 差值当行高（ink 盒 ≠ em 盒），把副标题画到了标题字形上。"""
+    return ink_bottom(y, size, bold) - ink_top(0, next_size, next_bold) + gap * next_size
+
+
+_TEXT_LOG = []
 
 
 def draw_text(draw, xy, text, size, color, bold=False, anchor='la'):
-    draw.text(xy, text, font=font(size, bold), fill=color, anchor=anchor)
+    f = font(size, bold)
+    try:
+        box = draw.textbbox(xy, text, font=f, anchor=anchor)
+    except Exception:
+        box = None
+    if box is not None:
+        _TEXT_LOG.append({'draw': draw, 'box': box, 'text': text})
+    draw.text(xy, text, font=f, fill=color, anchor=anchor)
+
+
+def check_overlaps(label=''):
+    """同一画布上任意两段文字像素级相交就报出来。
+    AI 生成商店图最常见的错就是文字互相压字，必须逐张机器校验，不能只看缩略图。"""
+    groups = {}
+    for rec in _TEXT_LOG:
+        groups.setdefault(id(rec['draw']), []).append(rec)
+    bad = []
+    for recs in groups.values():
+        for i in range(len(recs)):
+            for j in range(i + 1, len(recs)):
+                a, b = recs[i]['box'], recs[j]['box']
+                ox = min(a[2], b[2]) - max(a[0], b[0])
+                oy = min(a[3], b[3]) - max(a[1], b[1])
+                if ox > 1 and oy > 1:
+                    bad.append((recs[i]['text'], recs[j]['text'], ox, oy))
+    for t1, t2, ox, oy in bad:
+        print('    OVERLAP %-26s x %-26s (%dx%d px)' % (t1[:26], t2[:26], ox, oy))
+    return bad
 
 
 def rounded_rect_mask(size, radius):
@@ -173,9 +228,11 @@ def build_phone_ui(w, h, screen_kind):
         d.rounded_rectangle(banner, radius=int(h*0.02), fill=rgba('#171717'))
         art=create_album_art(int((banner[3]-banner[1])*0.78),'sunset')
         paste_rounded(img, art, [int(w*0.07),int(h*0.215),int(w*0.29),int(h*0.325)], radius=int(h*0.015))
-        draw_text(d,(w*0.34,h*0.242),'每日推荐',h*0.034,DARK['text'],bold=True)
-        draw_text(d,(w*0.34,h*0.285),'你的专属音乐情绪站',h*0.022,DARK['sub'])
-        chip=[w*0.34,h*0.302,w*0.48,h*0.332]
+        banner_title_y = h*0.226
+        draw_text(d,(w*0.34,banner_title_y),'每日推荐',h*0.034,DARK['text'],bold=True)
+        banner_sub_y = below(banner_title_y, h*0.034, True, h*0.022, gap=0.45)
+        draw_text(d,(w*0.34,banner_sub_y),'你的专属音乐情绪站',h*0.022,DARK['sub'])
+        chip=[w*0.34,ink_bottom(banner_sub_y, h*0.022)+h*0.010,w*0.48,ink_bottom(banner_sub_y, h*0.022)+h*0.040]
         d.rounded_rectangle(chip, radius=int(h*0.015), fill=rgba(DARK['red']))
         draw_text(d,((chip[0]+chip[2])/2,(chip[1]+chip[3])/2),'立即播放',h*0.018,'#FFFFFF',bold=True,anchor='mm')
         draw_text(d,(w*0.055,h*0.39),'为你推荐',h*0.028,DARK['text'],bold=True)
@@ -196,7 +253,7 @@ def build_phone_ui(w, h, screen_kind):
         art=create_album_art(int(h*0.048),'sunset')
         paste_rounded(img, art, [int(w*0.07),int(y+h*0.011),int(w*0.07+h*0.048),int(y+h*0.059)], radius=int(h*0.01))
         draw_text(d,(w*0.165,y+h*0.023),'赤色余晖',h*0.02,DARK['text'],bold=True)
-        draw_text(d,(w*0.165,y+h*0.047),'Lyco FM',h*0.016,DARK['sub'])
+        draw_text(d,(w*0.165,below(y+h*0.023,h*0.02,True,h*0.016,gap=0.5)),'Lyco FM',h*0.016,DARK['sub'])
         d.polygon([(w*0.78,y+h*0.018),(w*0.78,y+h*0.052),(w*0.815,y+h*0.035)], fill=rgba(DARK['text']))
     elif screen_kind == 'player':
         draw_text(d,(w*0.5,h*0.11),'正在播放',h*0.024,DARK['sub'],anchor='mm')
@@ -318,15 +375,11 @@ def compose_mobile_store_shot(size, title, subtitle, kind, theme='dark'):
     # Dynamic title sizing to prevent overlap
     title_size = h*(0.046 if len(title) <= 4 else 0.041 if len(title) <= 6 else 0.038)
     subtitle_size = h*0.020
-    title_y = h*0.118
+    title_y = h*0.112
     draw_text(d,(w*0.08,title_y),title,title_size,main_col,bold=True)
-    tb = d.textbbox((w*0.08,title_y), title, font=font(title_size, True), anchor='la')
-    title_h = tb[3]-tb[1]
-    sub_y = title_y + title_h + h*0.008
+    sub_y = below(title_y, title_size, True, subtitle_size, gap=0.55)
     draw_text(d,(w*0.08,sub_y),subtitle,subtitle_size,sub_col)
-    sb = d.textbbox((w*0.08,sub_y), subtitle, font=font(subtitle_size, False), anchor='la')
-    sub_h = sb[3]-sb[1]
-    chips_y = sub_y + sub_h + h*0.018
+    chips_y = ink_bottom(sub_y, subtitle_size) + h*0.014
     chips = [('跨平台',0.08),('深色主题',0.22),('歌词同步',0.39)]
     for text,x in chips:
         tw = len(text)*h*0.016 + w*0.05
@@ -385,7 +438,7 @@ def build_desktop_window(w, h, kind):
     cw,ch = w-sidebar_w-w*0.06, h-top_h-h*0.15
     if kind == 'home':
         draw_text(d,(cx0,cy0),'首页推荐',h*0.04,DARK['text'],bold=True)
-        draw_text(d,(cx0,cy0+h*0.045),'懂你的每日推荐与最近播放',h*0.02,DARK['sub'])
+        draw_text(d,(cx0,below(cy0,h*0.04,True,h*0.02,gap=0.9)),'懂你的每日推荐与最近播放',h*0.02,DARK['sub'])
         hero=[cx0,cy0+h*0.09,cx0+cw*0.62,cy0+h*0.31]
         d.rounded_rectangle(hero, radius=int(h*0.025), fill=rgba('#1A1A1A'))
         art=create_album_art(int((hero[3]-hero[1])*0.75),'sunset')
@@ -418,7 +471,7 @@ def build_desktop_window(w, h, kind):
             draw_text(d,(x+w*0.015+h*0.14,y+h*0.105),'24 首歌曲',h*0.016,DARK['weak'])
     elif kind == 'player':
         draw_text(d,(cx0,cy0),'沉浸式播放器',h*0.04,DARK['text'],bold=True)
-        draw_text(d,(cx0,cy0+h*0.045),'黑胶唱片、歌词同屏与氛围播放',h*0.02,DARK['sub'])
+        draw_text(d,(cx0,below(cy0,h*0.04,True,h*0.02,gap=0.9)),'黑胶唱片、歌词同屏与氛围播放',h*0.02,DARK['sub'])
         vinyl_box=[cx0+w*0.02, cy0+h*0.11, cx0+cw*0.42, cy0+h*0.62]
         center=((vinyl_box[0]+vinyl_box[2])/2,(vinyl_box[1]+vinyl_box[3])/2); r=(vinyl_box[2]-vinyl_box[0])*0.42
         d.ellipse([center[0]-r,center[1]-r,center[0]+r,center[1]+r], fill=rgba('#0B0B0B'), outline=rgba('#252525'), width=max(2,w//600))
@@ -430,7 +483,7 @@ def build_desktop_window(w, h, kind):
         right=[cx0+cw*0.46, cy0+h*0.12, cx0+cw*0.98, cy0+h*0.62]
         d.rounded_rectangle(right, radius=int(h*0.024), fill=rgba('#1A1A1A'))
         draw_text(d,(right[0]+w*0.03,right[1]+h*0.03),'赤色余晖',h*0.038,DARK['text'],bold=True)
-        draw_text(d,(right[0]+w*0.03,right[1]+h*0.08),'Lyco FM · 专辑《夜色回声》',h*0.02,DARK['sub'])
+        draw_text(d,(right[0]+w*0.03,below(right[1]+h*0.03,h*0.038,True,h*0.02,gap=0.5)),'Lyco FM · 专辑《夜色回声》',h*0.02,DARK['sub'])
         d.rounded_rectangle([right[0]+w*0.03,right[1]+h*0.13,right[2]-w*0.03,right[1]+h*0.145], radius=6, fill=rgba('#111111'))
         d.rounded_rectangle([right[0]+w*0.03,right[1]+h*0.13,right[0]+w*0.19,right[1]+h*0.145], radius=6, fill=rgba(DARK['red']))
         d.ellipse([right[0]+w*0.185,right[1]+h*0.123,right[0]+w*0.197,right[1]+h*0.151], fill=rgba('#FFFFFF'))
@@ -439,7 +492,7 @@ def build_desktop_window(w, h, kind):
             draw_text(d,(right[0]+w*0.03,right[1]+h*(0.20+0.06*i)),line,h*(0.026 if i==0 else 0.02),DARK['text'] if i==0 else DARK['sub'],bold=(i==0))
     elif kind == 'library':
         draw_text(d,(cx0,cy0),'歌单与音乐库',h*0.04,DARK['text'],bold=True)
-        draw_text(d,(cx0,cy0+h*0.045),'更好整理你的收藏与播放历史',h*0.02,DARK['sub'])
+        draw_text(d,(cx0,below(cy0,h*0.04,True,h*0.02,gap=0.9)),'更好整理你的收藏与播放历史',h*0.02,DARK['sub'])
         tags=['全部','最近添加','专属歌单','收藏专辑']
         tx=cx0
         for i,tg in enumerate(tags):
@@ -480,16 +533,24 @@ def build_desktop_window(w, h, kind):
 def compose_desktop_screenshot(size, kind, platform='mac'):
     w,h=size
     base = make_bg(size, dark=True)
-    ww = int(w*(0.86 if platform=='mac' else 0.94)); wh = int(h*(0.80 if platform=='mac' else 0.89))
-    x0=(w-ww)//2; y0=(h-wh)//2
+    if platform == 'mac':
+        ww = int(w*0.86); wh = int(h*0.80)
+        x0=(w-ww)//2; y0=(h-wh)//2
+    else:
+        # 原来窗口几乎占满整图，左上角那句「Lyco Music」正好画在窗口标题栏上。
+        # 缩到 0.72 高度并整体下移，给顶部说明文字留出净空。
+        ww = int(w*0.94); wh = int(h*0.72)
+        x0=(w-ww)//2; y0=int(h*0.24)
     radius=int(min(ww,wh)*(0.03 if platform=='mac' else 0.02))
     draw_shadow(base, [x0,y0,x0+ww,y0+wh], radius=radius, blur=max(14,w//60), offset=(0,int(h*0.015)))
     window = build_desktop_window(ww,wh,kind)
     paste_rounded(base, window, [x0,y0,x0+ww,y0+wh], radius=radius)
     if platform=='windows':
         d=ImageDraw.Draw(base)
-        draw_text(d,(w*0.05,h*0.06),'Lyco Music',h*0.05,DARK['text'],bold=True)
-        draw_text(d,(w*0.05,h*0.12),{'home':'首页推荐','player':'沉浸播放','library':'歌单管理'}[kind],h*0.025,DARK['sub'])
+        cap_y = h*0.055
+        draw_text(d,(w*0.05,cap_y),'Lyco Music',h*0.05,DARK['text'],bold=True)
+        draw_text(d,(w*0.05,below(cap_y,h*0.05,True,h*0.026,gap=0.5)),
+                  {'home':'首页推荐','player':'沉浸播放','library':'歌单管理'}[kind],h*0.026,DARK['sub'])
     return base
 
 
@@ -551,67 +612,85 @@ def validate_sizes(paths):
     return out
 
 
-def main():
-    outputs=[]
-    # Icons
-    icon_master = load_icon(1024)
-    icon_sizes = {
-        'lyco_music_icon_1024.png': (1024,1024), 'lyco_music_icon_512.png': (512,512),
-        'lyco_music_icon_180.png': (180,180), 'lyco_music_icon_152.png': (152,152),
-        'lyco_music_icon_167.png': (167,167), 'lyco_music_icon_120.png': (120,120),
-        'lyco_music_icon_48.png': (48,48), 'lyco_music_icon_44.png': (44,44),
-        'lyco_music_icon_50.png': (50,50), 'lyco_music_icon_150.png': (150,150),
-        'lyco_music_icon_310.png': (310,310),
-    }
-    for fn,sz in icon_sizes.items():
-        outputs.append(save_flattened(icon_master.resize(sz, Image.LANCZOS), fn))
+ICON_SIZES = {
+    'lyco_music_icon_1024.png': (1024,1024), 'lyco_music_icon_512.png': (512,512),
+    'lyco_music_icon_180.png': (180,180), 'lyco_music_icon_152.png': (152,152),
+    'lyco_music_icon_167.png': (167,167), 'lyco_music_icon_120.png': (120,120),
+    'lyco_music_icon_48.png': (48,48), 'lyco_music_icon_44.png': (44,44),
+    'lyco_music_icon_50.png': (50,50), 'lyco_music_icon_150.png': (150,150),
+    'lyco_music_icon_310.png': (310,310),
+}
 
-    outputs.append(save_flattened(create_feature_graphic((1024,500)), 'google_play_feature_graphic_1024x500.png'))
+MOBILE_SPECS = [
+    ('home','首页推荐','懂你的每日推荐与最近播放'),
+    ('player','沉浸式播放界面','黑胶动效与歌词同屏，听见每一句'),
+    ('playlist','歌单广场','发现宝藏歌单，收藏喜欢的节奏'),
+    ('sync','好友与同步','桌面与移动无缝接力，收藏歌单实时同步'),
+    ('search','搜索','歌曲、歌手、专辑、歌词一键直达'),
+]
+DESKTOP_KINDS = ['home','player','library']
 
-    mobile_specs=[('home','首页推荐','懂你的每日推荐与最近播放'),('player','沉浸式播放界面','黑胶动效与歌词同屏，听见每一句'),('playlist','歌单广场','发现宝藏歌单，收藏喜欢的节奏'),('sync','好友与同步','桌面与移动无缝接力，收藏歌单实时同步'),('search','搜索','歌曲、歌手、专辑、歌词一键直达')]
-    for i,(kind,title,sub) in enumerate(mobile_specs, start=1):
-        outputs.append(save_flattened(compose_mobile_store_shot((1080,1920), title, sub, kind), f'google_play_phone_screenshot_{i}_1080x1920.png'))
-    for i,(kind,title,sub) in enumerate(mobile_specs, start=1):
-        outputs.append(save_flattened(compose_mobile_store_shot((1320,2868), title, sub, kind), f'apple_iphone_screenshot_{i}_1320x2868.png'))
+REPORT = []
 
-    outputs.append(save_flattened(create_appstore_header((3840,1646)), 'apple_product_page_header_3840x1646.png'))
 
-    desktop_kinds=['home','player','library']
-    for i,kind in enumerate(desktop_kinds, start=1):
-        outputs.append(save_flattened(compose_desktop_screenshot((2880,1800), kind, platform='mac'), f'mac_app_store_screenshot_{i}_2880x1800.png'))
+def _emit(build, filename):
+    """渲染一张图并立刻做文字重叠自检（渲染必须在清空日志之后）。"""
+    _TEXT_LOG.clear()
+    img = build()
+    path = save_flattened(img, filename)
+    bad = check_overlaps(filename)
+    status = 'OK' if not bad else 'OVERLAP x%d' % len(bad)
+    print('%-52s %s' % (filename, status))
+    REPORT.append({'file': filename, 'overlaps': len(bad)})
+    return path
 
-    outputs.append(save_flattened(icon_master.resize((300,300), Image.LANCZOS), 'microsoft_store_logo_300x300.png'))
+
+def build_microsoft_tile():
     tile = make_bg((310,150), dark=True)
-    d=ImageDraw.Draw(tile)
+    d = ImageDraw.Draw(tile)
     tile.alpha_composite(load_icon(110), (18,20))
     draw_text(d,(150,34),'Lyco Music',26,DARK['text'],bold=True)
-    draw_text(d,(150,70),'Windows 音乐播放器',14,DARK['sub'])
-    d.rounded_rectangle([150,94,292,122], radius=14, fill=rgba('#1B1B1B'))
-    draw_text(d,(221,108),'黑胶 · 歌词 · 同步',12,DARK['sub'],anchor='mm')
-    outputs.append(save_flattened(tile, 'microsoft_store_wide_tile_310x150.png'))
-    outputs.append(save_flattened(icon_master.resize((44,44), Image.LANCZOS), 'microsoft_store_small_icon_44x44.png'))
-    for i,kind in enumerate(desktop_kinds, start=1):
-        outputs.append(save_flattened(compose_desktop_screenshot((1366,768), kind, platform='windows'), f'microsoft_store_screenshot_{i}_1366x768.png'))
+    draw_text(d,(150,below(34,26,True,14,gap=0.5)),'Windows 音乐播放器',14,DARK['sub'])
+    tag_y = below(34,26,True,14,gap=0.5) + 20
+    d.rounded_rectangle([150,tag_y,292,tag_y+28], radius=14, fill=rgba('#1B1B1B'))
+    draw_text(d,(221,tag_y+14),'黑胶 · 歌词 · 同步',12,DARK['sub'],anchor='mm')
+    return tile
 
-    manifest = validate_sizes(outputs)
-    man_path='/mnt/data/lyco_music_store_assets/manifest.json'
-    with open(man_path,'w',encoding='utf-8') as f:
-        json.dump(manifest, f, ensure_ascii=False, indent=2)
-    txt_path='/mnt/data/lyco_music_store_assets/README_assets.txt'
-    with open(txt_path,'w',encoding='utf-8') as f:
-        f.write('Lyco Music store listing assets\n\n')
-        for row in manifest:
-            f.write(f"{row['file']} - {row['width']}x{row['height']}\n")
 
-    zip_path='/mnt/data/lyco_music_store_assets/lyco_music_store_listing_assets.zip'
-    with zipfile.ZipFile(zip_path,'w',compression=zipfile.ZIP_DEFLATED) as z:
-        for p in outputs:
-            z.write(p, arcname=os.path.basename(p))
-        z.write(man_path, arcname='manifest.json')
-        z.write(txt_path, arcname='README_assets.txt')
-    print(f'Generated {len(outputs)} PNG files')
-    print(zip_path)
-    print(man_path)
+def main():
+    outputs = []
+    want_icons = os.environ.get('LYCO_ICONS', '0') == '1'
+    if want_icons:
+        master = load_icon(1024)
+        for fn, sz in ICON_SIZES.items():
+            outputs.append(_emit(lambda sz=sz, master=master: master.resize(sz, Image.LANCZOS), fn))
+        outputs.append(_emit(lambda m=master: m.resize((300,300), Image.LANCZOS), 'microsoft_store_logo_300x300.png'))
+        outputs.append(_emit(lambda m=master: m.resize((44,44), Image.LANCZOS), 'microsoft_store_small_icon_44x44.png'))
+
+    outputs.append(_emit(lambda: create_feature_graphic((1024,500)), 'google_play_feature_graphic_1024x500.png'))
+    for i,(kind,title,sub) in enumerate(MOBILE_SPECS, start=1):
+        outputs.append(_emit(lambda k=kind,t=title,s=sub: compose_mobile_store_shot((1080,1920), t, s, k),
+                             'google_play_phone_screenshot_%d_1080x1920.png' % i))
+    for i,(kind,title,sub) in enumerate(MOBILE_SPECS, start=1):
+        outputs.append(_emit(lambda k=kind,t=title,s=sub: compose_mobile_store_shot((1320,2868), t, s, k),
+                             'apple_iphone_screenshot_%d_1320x2868.png' % i))
+    outputs.append(_emit(lambda: create_appstore_header((3840,1646)), 'apple_product_page_header_3840x1646.png'))
+    for i,kind in enumerate(DESKTOP_KINDS, start=1):
+        outputs.append(_emit(lambda k=kind: compose_desktop_screenshot((2880,1800), k, platform='mac'),
+                             'mac_app_store_screenshot_%d_2880x1800.png' % i))
+    outputs.append(_emit(build_microsoft_tile, 'microsoft_store_wide_tile_310x150.png'))
+    for i,kind in enumerate(DESKTOP_KINDS, start=1):
+        outputs.append(_emit(lambda k=kind: compose_desktop_screenshot((1366,768), k, platform='windows'),
+                             'microsoft_store_screenshot_%d_1366x768.png' % i))
+
+    meta = os.path.join(os.path.dirname(_HERE), 'generated_manifest.json')
+    with open(meta, 'w', encoding='utf-8') as f:
+        json.dump(validate_sizes(outputs), f, ensure_ascii=False, indent=2)
+    total = sum(r['overlaps'] for r in REPORT)
+    print()
+    print('rendered %d files, total text overlaps: %d' % (len(outputs), total))
+    print(meta)
+
 
 if __name__ == '__main__':
     main()

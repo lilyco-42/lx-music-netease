@@ -49,5 +49,34 @@ PingFang SC / Microsoft YaHei / Noto Sans CJK SC。
 
 ## 其他文件
 - `manifest.json`：全部 32 个文件与像素尺寸清单（可与本地逐张校验）。
-- `generate_lyco_store_assets.py`：ChatGPT 生成时使用的导出脚本（PIL 精确尺寸 + 校验）。
-- `lyco_music_store_assets.zip`：整包压缩，5.6 MB，可直接下载使用。
+`generate_lyco_store_assets.py`：导出脚本（PIL 精确尺寸 + 文字重叠自检）。
+
+## 复现与自检
+
+脚本原本写死在 ChatGPT 沙箱路径（`/mnt/data/...`、Linux Noto 字体）上，出沙箱跑不起来；现已改为
+可用环境变量覆盖的本地路径，在 Windows 上直接可跑：
+
+```bash
+# 只重画商店截图/头图（推荐，图标沿用已定稿的 AI 生成母图）
+LYCO_OUT=./out LYCO_ICON=./icon/lyco_music_icon_1024.png \
+  python generate_lyco_store_assets.py
+
+# 连 11 个图标 + Microsoft Logo/小图标一起重画
+LYCO_ICONS=1 ... python generate_lyco_store_assets.py
+```
+
+字体默认用 `C:\\Windows\\Fonts\\msyh.ttc`（可用 `LYCO_FONT_REG` / `LYCO_FONT_BOLD` 换）。
+
+**文字重叠自检**：`draw_text()` 会把每段文字的 ink 盒记进 `_TEXT_LOG`，每张图渲染完调用
+`check_overlaps()` 做两两相交检测并打印结果。生成式排版最容易出的错就是文字互相压字，
+这类问题在缩略图里往往看不出来，必须机器逐张校验。当前 19 张合成图重叠数均为 0。
+
+### 本版修掉的排版缺陷
+
+| 位置 | 问题 | 修法 |
+|---|---|---|
+| 手机截图（Play/App Store 各 5 张） | 首页 banner 的红底「立即播放」按钮压住副标题「你的专属音乐情绪站」 | 用字体度量 `below()` 排版后按钮跟随副标题下移 |
+| 手机截图标题区 | 标题行高用 `textbbox` 差值算（ink 盒 ≠ em 盒），副标题贴到标题字形上 | 统一改用 `ink_top/ink_bottom/below` 基于 `getmetrics()` 的行高 |
+| Microsoft Store 截图 ×3 | 左上角「Lyco Music」说明文字正好画在窗口标题栏上 | 窗口收到 0.72 高并下移，顶部留出净空 |
+| 桌面窗口三个页面标题 | 标题/副标题间距 0.045h 小于实际行高，出现 1px 相压 | 改为按字体度量计算、`gap=0.9` |
+- `lyco_music_store_assets.zip`：整包压缩，约 5.4 MB，可直接下载使用。

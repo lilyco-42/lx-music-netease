@@ -1,0 +1,34 @@
+Lyco Music store listing assets
+
+lyco_music_icon_1024.png - 1024x1024
+lyco_music_icon_512.png - 512x512
+lyco_music_icon_180.png - 180x180
+lyco_music_icon_152.png - 152x152
+lyco_music_icon_167.png - 167x167
+lyco_music_icon_120.png - 120x120
+lyco_music_icon_48.png - 48x48
+lyco_music_icon_44.png - 44x44
+lyco_music_icon_50.png - 50x50
+lyco_music_icon_150.png - 150x150
+lyco_music_icon_310.png - 310x310
+google_play_feature_graphic_1024x500.png - 1024x500
+google_play_phone_screenshot_1_1080x1920.png - 1080x1920
+google_play_phone_screenshot_2_1080x1920.png - 1080x1920
+google_play_phone_screenshot_3_1080x1920.png - 1080x1920
+google_play_phone_screenshot_4_1080x1920.png - 1080x1920
+google_play_phone_screenshot_5_1080x1920.png - 1080x1920
+apple_iphone_screenshot_1_1320x2868.png - 1320x2868
+apple_iphone_screenshot_2_1320x2868.png - 1320x2868
+apple_iphone_screenshot_3_1320x2868.png - 1320x2868
+apple_iphone_screenshot_4_1320x2868.png - 1320x2868
+apple_iphone_screenshot_5_1320x2868.png - 1320x2868
+apple_product_page_header_3840x1646.png - 3840x1646
+mac_app_store_screenshot_1_2880x1800.png - 2880x1800
+mac_app_store_screenshot_2_2880x1800.png - 2880x1800
+mac_app_store_screenshot_3_2880x1800.png - 2880x1800
+microsoft_store_logo_300x300.png - 300x300
+microsoft_store_wide_tile_310x150.png - 310x150
+microsoft_store_small_icon_44x44.png - 44x44
+microsoft_store_screenshot_1_1366x768.png - 1366x768
+microsoft_store_screenshot_2_1366x768.png - 1366x768
+microsoft_store_screenshot_3_1366x768.png - 1366x768
