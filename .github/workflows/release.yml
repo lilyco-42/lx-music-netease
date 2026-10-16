@@ -5,6 +5,10 @@ name: Release
 on:
   push:
     tags: ['v*']
+    # Automatically release only on root-version changes merged to main.
+    branches: [main]
+    paths:
+      - 'package.json'
   workflow_dispatch:
 
 permissions:
@@ -182,6 +186,14 @@ jobs:
           echo "LXMN_KEYSTORE_PATH=$RUNNER_TEMP/lxmn-release.p12" >> "$GITHUB_ENV"
           echo "signed=release" >> "$GITHUB_OUTPUT"
 
+      - name: Set Android version from root package
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          CODE=$(node -e "const [major,minor,patch] = require('./package.json').version.split('.').map(Number); console.log(major*1000000+minor*1000+patch)")
+          echo "LXMN_VERSION_NAME=$VERSION" >> "$GITHUB_ENV"
+          echo "LXMN_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+          echo "Android version $VERSION (code $CODE)"
       - name: Build release APK
         working-directory: apps/mobile/android
         env:
@@ -304,17 +316,14 @@ jobs:
         id: tag
         shell: bash
         run: |
+          VERSION=$(node -p "require('./package.json').version")
           if [ '${{ github.ref_type }}' = 'tag' ]; then
             NAME='${{ github.ref_name }}'
           else
-            NAME="v0.1.0-$(date +%Y%m%d)"
+            NAME="v${VERSION}-$(date +%Y%m%d)"
           fi
-          echo "name=$NAME" >> $GITHUB_OUTPUT
-          # 版本号只在 package.json 维护一处，tag 形如 v0.1.0-20261015。
-          # 注意：$() 内层必须用单引号、外层用双引号。若把内层单引号转义成
-          # 反斜杠双引号，bash 会在 'unexpected token (' 处直接语法错误（已踩过）。
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
