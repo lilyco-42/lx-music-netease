@@ -285,7 +285,7 @@ jobs:
         shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          CODE=$(node -e "const v=require('./package.json').version.split('.').map(Number);console.log(v[0]*10000+v[1]*100+(v[2]||0))")
+          CODE=$(node -e "const [major,minor,patch] = require('./package.json').version.split('.').map(Number); console.log(major*1000000+minor*1000+patch)")
           PBX=apps/mobile/ios/LycoMusic.xcodeproj/project.pbxproj
           sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = $VERSION;/g" "$PBX"
           sed -i '' -E "s/CURRENT_PROJECT_VERSION = [^;]+;/CURRENT_PROJECT_VERSION = $CODE;/g" "$PBX"

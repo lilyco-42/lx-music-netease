@@ -85,3 +85,25 @@ describe('版本号一致性', () => {
     expect(src).toContain("ver = tag[1:].split('-')[0]")
   })
 })
+
+describe('CI 注入的构建号', () => {
+  const wf = read('.github/workflows/release.yml')
+
+  it('Android 与 iOS 两处 versionCode 公式一致（都必须是百万量级，给 minor/patch 留足位数）', () => {
+    // 只看真正参与计算的 console.log 行，注释里提到公式不算
+    const codeLines = wf.split('\n').filter(l => l.includes('console.log') && l.includes('major*'))
+    const formulas = codeLines
+      .map(l => l.match(/major\*(\d+)\s*\+\s*minor\*(\d+)/))
+      .map(m => [Number(m![1]), Number(m![2])])
+    // 曾经踩过：Android 用 major*1000000+minor*1000+patch，iOS 却写成
+    // major*10000+minor*100+patch，同一版本两端算出 2002 / 202 两个不同构建号。
+    expect(formulas.length, 'release.yml 里应有 Android、iOS 两处构建号公式').toBe(2)
+    for (const f of formulas) expect(f).toEqual([1000000, 1000])
+  })
+
+  it('CI 算出来的构建号与工程文件里的默认值一致', () => {
+    expect(read('apps/mobile/android/app/build.gradle')).toContain(': ' + expectedCode + ')')
+    expect(read('apps/mobile/ios/LycoMusic.xcodeproj/project.pbxproj'))
+      .toContain('CURRENT_PROJECT_VERSION = ' + expectedCode + ';')
+  })
+})
