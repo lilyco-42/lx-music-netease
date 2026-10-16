@@ -80,6 +80,24 @@ export function currentItem(): MusicItem | null {
 const QUALITY_ORDER: Quality[] = ['master', 'atmos', 'hires', 'flac24bit', 'flac', '320k', '128k']
 
 let ready: Promise<void> | null = null
+let nativePlayerReady = false
+
+/** 避免播放器原生异常穿透 onPress，导致未处理的 Promise rejection。 */
+function reportPlayerError(action: string, error: unknown): void {
+  const detail = error instanceof Error ? error.message : String(error)
+  state.error = `${action}失败：${detail}`
+  state.loading = false
+  console.warn(`[Lyco Music] ${action} failed`, error)
+  emit()
+}
+
+async function safePlayerAction(action: string, task: () => Promise<void>): Promise<void> {
+  try {
+    await task()
+  } catch (error) {
+    reportPlayerError(action, error)
+  }
+}
 
 /**
  * 初始化 TrackPlayer。
@@ -91,7 +109,10 @@ let ready: Promise<void> | null = null
 export function setupPlayer(): Promise<void> {
   if (!ready) {
     ready = (async () => {
-      await TrackPlayer.setupPlayer({ autoHandleInterruptions: true })
+      if (!nativePlayerReady) {
+        await TrackPlayer.setupPlayer({ autoHandleInterruptions: true })
+        nativePlayerReady = true
+      }
       await TrackPlayer.updateOptions({
         // 从最近任务划掉应用后继续播放（否则系统会连通知一起撤掉）
         android: { appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback },
@@ -106,7 +127,12 @@ export function setupPlayer(): Promise<void> {
         compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToNext],
         progressUpdateEventInterval: 1,
       })
-    })()
+    })().catch(error => {
+      // 前台服务暂时不可用时允许用户下次点击重新初始化。
+      // 已完成原生 setup 的场景不会重复调用 setupPlayer。
+      ready = null
+      throw error
+    })
   }
   return ready
 }
@@ -162,7 +188,12 @@ async function loadMeta(item: MusicItem): Promise<void> {
 }
 
 export async function play(item: MusicItem, queue?: MusicItem[]): Promise<void> {
-  await setupPlayer()
+  try {
+    await setupPlayer()
+  } catch (error) {
+    reportPlayerError('播放器初始化', error)
+    return
+  }
   if (queue?.length) {
     state.queue = queue
     const at = queue.findIndex(x => x.songmid === item.songmid && x.source === item.source)
@@ -193,13 +224,18 @@ export async function prev(): Promise<void> {
 
 export async function toggle(): Promise<void> {
   if (!currentItem()) return
-  const s = await TrackPlayer.getPlaybackState()
-  if (s.state === State.Playing) await TrackPlayer.pause()
-  else await TrackPlayer.play()
+  await safePlayerAction('播放控制', async () => {
+    const s = await TrackPlayer.getPlaybackState()
+    if (s.state === State.Playing) await TrackPlayer.pause()
+    else await TrackPlayer.play()
+  })
 }
 
 export async function seek(seconds: number): Promise<void> {
-  await TrackPlayer.seekTo(Math.max(0, seconds))
+  if (!currentItem()) return
+  await safePlayerAction('进度跳转', async () => {
+    await TrackPlayer.seekTo(Math.max(0, seconds))
+  })
 }
 
 /** 换音质后用新音质重取当前曲目 */

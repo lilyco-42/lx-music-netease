@@ -77,11 +77,29 @@ export default function MembershipScreen() {
   }
 
   async function onDeactivate() {
-    await deactivate()
-    await disconnectSync().catch(() => undefined)
-    setResult({ state: 'none' })
-    setApplyResult(null)
+    if (busy) return
+    setBusy(true)
     setError('')
+    try {
+      await deactivate()
+      await disconnectSync().catch(() => undefined)
+      setResult({ state: 'none' })
+      setApplyResult(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onOpenShop() {
+    try {
+      await Linking.openURL(SHOP_URL)
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e)
+      console.warn('[Lyco Music] Failed to open shop', e)
+      setError(`浏览器打开失败（${reason}），请手动访问 ${SHOP_URL}`)
+    }
   }
 
   return (
@@ -124,7 +142,7 @@ export default function MembershipScreen() {
           </View>
 
           <Pressable
-            onPress={() => Linking.openURL(SHOP_URL).catch(() => setError('无法打开浏览器，请手动访问 ' + SHOP_URL))}
+            onPress={() => { void onOpenShop() }}
             style={{
               marginTop: 22,
               backgroundColor: colors.accent,
@@ -227,7 +245,7 @@ export default function MembershipScreen() {
                     暂未支持：{applyResult.unavailable.join('、')}（订阅包含，但当前版本尚未内置）
                   </Text>
                 ) : null}
-                <Pressable onPress={onDeactivate} style={{ marginTop: 16 }}>
+                <Pressable onPress={onDeactivate} disabled={busy} style={{ marginTop: 16 }}>
                   <Text style={{ color: colors.fainter, fontSize: 13 }}>退出会员</Text>
                 </Pressable>
               </>
