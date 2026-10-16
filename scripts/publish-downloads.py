@@ -66,17 +66,13 @@ def entry(fn, platform, plat_label, arch_note):
         # 这里不直接失败，但要让日志里看得见，便于回头修 artifactName。
         print('WARNING: filename contains a space, url-unsafe: %s' % fn)
     p = os.path.join(stage, fn)
-    out = {
+    return {
         'platform': plat_label,
         'file': fn,
         'size': os.path.getsize(p),
         'sha256': sha(p),
         'url': base_url + '/' + fn,
     }
-    if os.environ.get('LYCO_R2_MIRROR', '1') != '0':
-        # 镜像的 key 结构与主站一致：lyco_music/<tag>/<file>
-        out['r2Mirror'] = R2_MIRROR_BASE + '/' + tag + '/' + fn
-    return out
 
 win = pick('windows-setup.exe')
 msi = pick('windows-x64.msi')
@@ -159,6 +155,14 @@ if ipa:
         mirror=entry(ipa, 'ios', 'iOS · 未签名 IPA', ''),
         note='这是未签名 IPA，不能直接双击安装。可用 AltStore / SideStore / TrollStore 侧载，或用你自己的开发者证书重签后再装。',
         **common))
+
+# R2 边缘镜像直链：与 mirror.url 指向同一份文件，海外/断点续传走这条。
+# 放在条目顶层（和 official / channel 同级），下载页与客户端按需回退。
+if os.environ.get('LYCO_R2_MIRROR', '1') != '0':
+    for it in items:
+        fn = (it.get('mirror') or {}).get('file')
+        if fn:
+            it['r2Mirror'] = R2_MIRROR_BASE + '/' + tag + '/' + fn
 
 man = json.load(open(MAN, encoding='utf-8'))
 old_ids = {i['id'] for i in man['items']}
