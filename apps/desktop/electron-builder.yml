@@ -43,7 +43,7 @@ msi:
   perMachine: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: LX Music
+  shortcutName: Lyco Music
   artifactName: Lyco.Music-${version}-windows-${arch}.msi
 
 # portable 必须单独写 artifactName。
@@ -61,7 +61,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: LX Music
+  shortcutName: Lyco Music
   artifactName: Lyco.Music-${version}-windows-setup.${ext}
 
 mac:

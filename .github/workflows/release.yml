@@ -38,6 +38,8 @@ jobs:
         run: pnpm -r --filter './packages/**' build
       - name: Build renderer
         run: pnpm --filter @lxmn/app-desktop build
+      - name: Verify Electron bundled asset paths
+        run: node scripts/check-desktop-assets.mjs
       # msi 需要 WiX，windows runner 自带；产出 .msi 供企业/静默安装场景。
       - name: Package (nsis + msi + portable)
         working-directory: apps/desktop
@@ -70,6 +72,8 @@ jobs:
         run: pnpm -r --filter './packages/**' build
       - name: Build renderer
         run: pnpm --filter @lxmn/app-desktop build
+      - name: Verify Electron bundled asset paths
+        run: node scripts/check-desktop-assets.mjs
       # electron-builder 打包 dmg 时要挂载卷再卸载；macOS runner 上 Spotlight
       # 会索引刚挂载的卷，导致 hdiutil detach 以 'Resource busy' 反复失败。
       # 关掉索引即可，这也是 electron-builder 官方 issue 里给出的办法。
@@ -108,6 +112,8 @@ jobs:
         run: pnpm -r --filter './packages/**' build
       - name: Build renderer
         run: pnpm --filter @lxmn/app-desktop build
+      - name: Verify Electron bundled asset paths
+        run: node scripts/check-desktop-assets.mjs
       - name: Package (AppImage)
         working-directory: apps/desktop
         run: pnpm exec electron-builder --linux AppImage --publish never
@@ -459,12 +465,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
-          name: LX Music ${{ steps.tag.outputs.name }}
+          name: Lyco Music ${{ steps.tag.outputs.name }}
           draft: false
           prerelease: false
           generate_release_notes: true
           body: |
-            ## LX Music 全平台发布
+            ## Lyco Music 全平台发布
 
             网易云音乐风格 UI 重制版，桌面端与移动端共用同一套内核（@lxmn/core）。
 

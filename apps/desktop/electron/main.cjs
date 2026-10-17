@@ -21,7 +21,7 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 670,
     backgroundColor: '#F4F6FB',
-    title: 'LX Music',
+    title: 'Lyco Music',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
