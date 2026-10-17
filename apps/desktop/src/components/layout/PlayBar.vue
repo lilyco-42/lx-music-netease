@@ -72,21 +72,6 @@ const error = computed(() => player.state.error)
         <div v-else-if="timeText" class="mt-1 text-[12px] text-ncm-fainter">{{ timeText }}</div>
       </div>
 
-      <!-- 爱心 + 计数，评论 + 计数 -->
-      <div class="flex shrink-0 items-center gap-3 text-ncm-faint">
-        <span class="flex items-center gap-1">
-          <svg viewBox="0 0 24 24" class="size-[17px] stroke-current" fill="none" stroke-width="1.8">
-            <path d="M12 20s-7-4.6-7-9.4A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.6C19 15.4 12 20 12 20Z" />
-          </svg>
-          <span class="text-[12px]">100w+</span>
-        </span>
-        <span class="flex items-center gap-1">
-          <svg viewBox="0 0 24 24" class="size-[17px] stroke-current" fill="none" stroke-width="1.8">
-            <path d="M21 12a8 8 0 1 1-3.2-6.4M21 4v5h-5" stroke-linecap="round" />
-          </svg>
-          <span class="text-[12px]">1w+</span>
-        </span>
-      </div>
     </div>
 
     <!-- 中央控制区 -->

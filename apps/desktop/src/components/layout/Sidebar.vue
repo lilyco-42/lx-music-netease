@@ -1,159 +1,96 @@
 <script setup lang="ts">
-/**
- * 左侧导航 —— 实测规格：
- * 宽 255px，背景 #EEF1F6
- * 导航项高 45~49px，选中项背景 #D13B50、圆角 10px、白字
- * 选中项左边距 30px、宽 206px
- * 分组小封面 40x40、圆角 4px、行高 57px
- */
-import { ref } from 'vue'
+import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  Disc3, Music2, Sparkles, Podcast, Compass, UsersRound,
+  Heart, History, Download, Ellipsis, Crown, Cloud, UserRound,
+  ListMusic,
+} from 'lucide-vue-next'
+import { useSync } from '@/lib/sync'
 
 const route = useRoute()
 const router = useRouter()
+const { playlists, restore } = useSync()
+onMounted(() => { void restore() })
 
 const navMain = [
-  { key: 'recommend', label: '推荐', icon: 'music' },
-  { key: 'featured', label: '精选', icon: 'star' },
-  { key: 'podcast', label: '播客', icon: 'mic' },
-  { key: 'roam', label: '漫游', icon: 'compass' },
-  { key: 'follow', label: '关注', icon: 'user', dot: true },
+  { key: 'recommend', label: '推荐', icon: Music2, route: '/' },
+  { key: 'featured', label: '精选', icon: Sparkles, query: '精选' },
+  { key: 'podcast', label: '播客', icon: Podcast, query: '播客' },
+  { key: 'roam', label: '漫游', icon: Compass, query: '轻音乐' },
+  { key: 'follow', label: '关注', icon: UsersRound, route: '/friends' },
 ]
-
+const navServices = [
+  { key: 'membership', label: '音乐会员', icon: Crown, route: '/membership' },
+  { key: 'sync', label: '云同步', icon: Cloud, route: '/sync' },
+  { key: 'friends', label: '好友', icon: UsersRound, route: '/friends' },
+  { key: 'account', label: '我的账户', icon: UserRound, route: '/account' },
+]
 const navMine = [
-  { key: 'like', label: '我喜欢的音乐', icon: 'heart' },
-  { key: 'recent', label: '最近播放', icon: 'clock' },
-  { key: 'download', label: '下载管理', icon: 'download' },
-  { key: 'more', label: '更多', icon: 'more' },
+  { key: 'like', label: '我喜欢的音乐', icon: Heart, route: '/my' },
+  { key: 'recent', label: '最近播放', icon: History, route: '/my' },
+  { key: 'download', label: '下载管理', icon: Download, route: '' },
+  { key: 'more', label: '更多', icon: Ellipsis, route: '/account' },
 ]
 
-/** 会员入口：与移动端「会员」页同一套订阅协议 */
-const navMembership = { key: 'membership', label: '音乐会员', icon: 'vip' }
-/** 云同步入口：默认走 lain42.top，会员令牌直接复用 */
-const navSync = { key: 'sync', label: '云同步', icon: 'sync' }
-/** 好友入口：身份即订阅，和云同步同一个令牌 */
-const navFriends = { key: 'friends', label: '好友', icon: 'friends' }
-
-// 实测：创建的歌单 13
-const playlists = ref(
-  Array.from({ length: 13 }, (_, i) => ({
-    id: i,
-    name: ['私人雷达', '每日推荐', '我喜欢的音乐', '华语流行', '轻音乐', '电子', '摇滚', '民谣',
-           '古典', '爵士', '说唱', '影视原声', '深夜电台'][i] ?? `歌单 ${i + 1}`,
-  })),
-)
-
-const active = ref('recommend')
-
-/** 路由名 → 侧栏高亮：进入会员/同步页时对应项要亮起来 */
-const ROUTE_HIGHLIGHT: Record<string, string> = { membership: 'membership', sync: 'sync' }
+function go(item: { route?: string; query?: string }) {
+  if (item.route) void router.push(item.route)
+  else if (item.query) void router.push({ name: 'search', query: { q: item.query } })
+}
+function selected(item: { route?: string; query?: string }) {
+  if (item.route === '/') return route.name === 'home'
+  if (item.route && route.path === item.route) return true
+  return !!item.query && route.name === 'search' && route.query.q === item.query
+}
+const rowClass = 'mx-4 flex h-11 w-[calc(100%-2rem)] shrink-0 items-center gap-3 rounded-xl px-4 text-left text-[15px] transition-colors'
 </script>
 
 <template>
-  <aside class="flex h-full flex-col overflow-y-auto bg-ncm-sidebar">
-    <!-- Logo 区：红色圆标直径 35px + 22px/600 文字 -->
-    <div class="flex items-center gap-2.5 px-[30px] pt-[29px] pb-4">
-      <div class="flex size-[35px] items-center justify-center rounded-full bg-ncm-accent">
-        <svg viewBox="0 0 24 24" class="size-[19px] fill-white">
-          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4.2a5.8 5.8 0 1 1 0 11.6 5.8 5.8 0 0 1 0-11.6Zm0 3.1a2.7 2.7 0 1 0 0 5.4 2.7 2.7 0 0 0 0-5.4Z" />
-        </svg>
-      </div>
-      <span class="text-[22px] font-semibold leading-[30px] text-ncm-fg">Lyco Music</span>
+  <aside class="flex h-full flex-col overflow-y-auto border-r border-ncm-divider bg-ncm-sidebar">
+    <div class="flex items-center gap-3 px-6 pb-5 pt-7">
+      <span class="flex size-10 items-center justify-center rounded-full bg-ncm-accent text-white">
+        <Disc3 :size="26" :stroke-width="2" />
+      </span>
+      <span class="text-[22px] font-semibold tracking-tight text-ncm-fg">Lyco Music</span>
     </div>
 
-    <!-- 主导航 -->
-    <nav class="mt-[19px] flex flex-col">
-      <button
-        v-for="item in navMain"
-        :key="item.key"
-        type="button"
-        class="relative mx-[30px] flex h-[45px] w-[206px] items-center gap-3 rounded-nav px-3.5 text-left text-[18px] leading-6 transition-colors"
-        :class="active === item.key
-          ? 'bg-ncm-accent-nav text-white'
-          : 'text-ncm-muted hover:bg-black/5'"
-        @click="active = item.key"
-      >
-        <span class="size-[18px] shrink-0 rounded-[3px] border-[1.5px] border-current opacity-80" />
+    <nav aria-label="发现音乐" class="flex flex-col gap-0.5">
+      <button v-for="item in navMain" :key="item.key" type="button" :class="[rowClass, selected(item) ? 'bg-ncm-accent-nav font-semibold text-white' : 'text-ncm-muted hover:bg-black/5']" @click="go(item)">
+        <component :is="item.icon" :size="19" :stroke-width="2" class="shrink-0" aria-hidden="true" />
         <span>{{ item.label }}</span>
-        <span v-if="item.dot" class="absolute right-4 size-[7px] rounded-full bg-ncm-accent" />
       </button>
     </nav>
 
-    <!-- 会员入口 -->
-    <button
-      type="button"
-      class="relative mx-[30px] mt-3 flex h-[45px] w-[206px] items-center gap-3 rounded-nav px-3.5 text-left text-[18px] leading-6 transition-colors"
-      :class="route.name === navMembership.key
-        ? 'bg-ncm-accent-nav text-white'
-        : 'text-ncm-muted hover:bg-black/5'"
-      @click="router.push({ name: navMembership.key })"
-    >
-      <span class="size-[18px] shrink-0 rounded-[3px] border-[1.5px] border-current opacity-80" />
-      <span>{{ navMembership.label }}</span>
-    </button>
+    <div class="mx-6 my-4 border-t border-ncm-divider" />
 
-    <!-- 分隔线：实测 y≈375 -->
-    <div class="mx-[30px] my-4 h-px bg-ncm-divider" />
-
-    <!-- 云同步入口 -->
-    <button
-      type="button"
-      class="relative mx-[30px] flex h-[45px] w-[206px] items-center gap-3 rounded-nav px-3.5 text-left text-[18px] leading-6 transition-colors"
-      :class="route.name === navSync.key
-        ? 'bg-ncm-accent-nav text-white'
-        : 'text-ncm-muted hover:bg-black/5'"
-      @click="router.push({ name: navSync.key })"
-    >
-      <span class="size-[18px] shrink-0 rounded-[3px] border-[1.5px] border-current opacity-80" />
-      <span>{{ navSync.label }}</span>
-    </button>
-
-    <!-- 好友入口 -->
-    <button
-      type="button"
-      class="relative mx-[30px] mt-3 flex h-[45px] w-[206px] items-center gap-3 rounded-nav px-3.5 text-left text-[18px] leading-6 transition-colors"
-      :class="route.name === navFriends.key
-        ? 'bg-ncm-accent-nav text-white'
-        : 'text-ncm-muted hover:bg-black/5'"
-      @click="router.push({ name: navFriends.key })"
-    >
-      <span class="size-[18px] shrink-0 rounded-[3px] border-[1.5px] border-current opacity-80" />
-      <span>{{ navFriends.label }}</span>
-    </button>
-
-    <!-- 我的 -->
-    <div class="flex flex-col">
-      <div class="px-[30px] pb-1 text-[14px] text-ncm-fainter">我的</div>
-      <button
-        v-for="item in navMine"
-        :key="item.key"
-        type="button"
-        class="mx-[30px] flex h-[49px] w-[206px] items-center gap-3 rounded-nav px-3.5 text-left text-[17px] leading-6 transition-colors"
-        :class="route.name === 'my' && item.key === 'like'
-          ? 'bg-ncm-accent-nav text-white'
-          : 'text-ncm-muted hover:bg-black/5'"
-        @click="item.key === 'like' || item.key === 'recent' ? router.push({ name: 'my' }) : undefined"
-      >
-        <span class="size-[18px] shrink-0 rounded-[3px] border-[1.5px] border-current opacity-70" />
+    <nav aria-label="账户与服务" class="flex flex-col gap-0.5">
+      <button v-for="item in navServices" :key="item.key" type="button" :class="[rowClass, selected(item) ? 'bg-ncm-accent-nav font-semibold text-white' : 'text-ncm-muted hover:bg-black/5']" @click="go(item)">
+        <component :is="item.icon" :size="19" :stroke-width="2" class="shrink-0" aria-hidden="true" />
         <span>{{ item.label }}</span>
       </button>
-    </div>
+    </nav>
 
-    <!-- 创建的歌单 -->
-    <div class="mt-4 flex flex-col pb-6">
-      <div class="px-[30px] pb-1 text-[14px] text-ncm-fainter">
-        创建的歌单 <span class="ml-1">{{ playlists.length }}</span>
-      </div>
-      <!-- 行高 57px，封面 40x40 圆角 4px -->
-      <button
-        v-for="pl in playlists"
-        :key="pl.id"
-        type="button"
-        class="mx-[30px] flex h-[57px] w-[206px] items-center gap-3 rounded-nav px-1.5 text-left transition-colors hover:bg-black/5"
-      >
-        <span class="size-[40px] shrink-0 rounded-[4px] bg-ncm-fainter/40" />
-        <span class="truncate text-[15px] text-ncm-muted">{{ pl.name }}</span>
+    <div class="mb-1 mt-5 px-7 text-xs font-medium text-ncm-fainter">我的音乐</div>
+    <nav aria-label="本地音乐库" class="flex flex-col gap-0.5">
+      <button v-for="item in navMine" :key="item.key" type="button" :disabled="!item.route"
+              :title="!item.route ? '下载管理界面正在开发中' : undefined"
+              :class="[rowClass, selected(item) ? 'bg-ncm-accent-nav text-white' : 'text-ncm-muted hover:bg-black/5', !item.route ? 'cursor-not-allowed opacity-50' : '']"
+              @click="go(item)">
+        <component :is="item.icon" :size="19" :stroke-width="2" class="shrink-0" aria-hidden="true" />
+        <span>{{ item.label }}</span>
       </button>
+    </nav>
+
+    <div class="mb-2 mt-5 flex items-center gap-2 px-7 text-xs text-ncm-fainter">
+      <ListMusic :size="16" aria-hidden="true" />
+      <span>本机歌单（{{ playlists.length }}）</span>
     </div>
+    <p v-if="!playlists.length" class="px-7 pb-6 text-xs text-ncm-fainter">还没有创建歌单</p>
+    <button v-for="pl in playlists" :key="pl.id" type="button"
+            class="mx-4 flex min-h-11 items-center gap-3 rounded-lg px-4 text-left text-sm text-ncm-muted hover:bg-black/5"
+            @click="router.push('/my')">
+      <ListMusic :size="17" class="shrink-0" aria-hidden="true" />
+      <span class="truncate">{{ pl.name }}</span>
+    </button>
   </aside>
 </template>

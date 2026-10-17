@@ -4,7 +4,7 @@
  * 只做外壳：加载 Vite 构建产物，保留 lx-music 上游的自定义音源能力
  * （渲染层可通过 preload 暴露的 API 读写本地文件 / 发起无 CORS 请求）。
  */
-const { app, BrowserWindow, shell, ipcMain, net } = require('electron')
+const { app, BrowserWindow, shell, ipcMain, net, safeStorage } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs/promises')
 
@@ -110,3 +110,25 @@ ipcMain.handle('lxmn:app:info', async () => ({
   platform: process.platform,
   arch: process.arch,
 }))
+
+// Login tokens are written only when Electron can encrypt them with the OS key store.
+// Never downgrade to plaintext on Linux/headless hosts.
+const billingAuthFile = () => path.join(app.getPath('userData'), 'billing-auth.enc')
+ipcMain.handle('lxmn:auth:save', async (_e, token) => {
+  if (typeof token !== 'string' || token.length < 20 || token.length > 8192 ||
+      !/^[a-zA-Z0-9_.-]+$/.test(token)) throw new Error('Invalid account session')
+  if (!safeStorage.isEncryptionAvailable()) return false
+  await fs.writeFile(billingAuthFile(), safeStorage.encryptString(token), { mode: 0o600 })
+  return true
+})
+ipcMain.handle('lxmn:auth:load', async () => {
+  if (!safeStorage.isEncryptionAvailable()) return ''
+  try {
+    const value = safeStorage.decryptString(await fs.readFile(billingAuthFile()))
+    return value.length <= 8192 ? value : ''
+  } catch { return '' }
+})
+ipcMain.handle('lxmn:auth:clear', async () => {
+  await fs.rm(billingAuthFile(), { force: true })
+  return true
+})

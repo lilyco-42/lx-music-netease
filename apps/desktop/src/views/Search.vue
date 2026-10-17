@@ -28,6 +28,10 @@ const loading = ref(false)
 const error = ref('')
 const list = ref<MusicItem[]>([])
 const total = ref(0)
+const SOURCE_LABELS: Record<string, string> = {
+  wy: '网易云', kw: '酷我', kg: '酷狗', mg: '咪咕',
+}
+
 
 const keyword = computed(() => String(route.query.q ?? '').trim())
 
@@ -70,7 +74,7 @@ function fmtDuration(v: unknown): string {
     <p v-else-if="error" class="text-[15px] text-ncm-accent">{{ error }}</p>
     <p v-else-if="!keyword" class="text-[15px] text-ncm-faint">在上方输入关键词后回车</p>
     <div v-else-if="!list.length" class="flex flex-col items-center">
-      <img src="/art/empty-search.jpg" alt="" class="w-[180px] rounded-cover opacity-90" loading="lazy" />
+      <img :src="'./art/empty-search.jpg'" alt="" class="w-[180px] rounded-cover opacity-90" loading="lazy" />
       <p class="mt-4 text-[15px] text-ncm-faint">没有找到相关歌曲</p>
     </div>
 
@@ -90,9 +94,9 @@ function fmtDuration(v: unknown): string {
             alt=""
             class="size-full object-cover"
             loading="lazy"
-            @error="($event.target as HTMLImageElement).src = '/art/cover-default.jpg'"
+            @error="($event.target as HTMLImageElement).src = './art/cover-default.jpg'"
           />
-          <img v-else src="/art/cover-default.jpg" alt="" class="size-full object-cover" loading="lazy" />
+          <img v-else :src="'./art/cover-default.jpg'" alt="" class="size-full object-cover" loading="lazy" />
           <button
             type="button"
             class="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100"
@@ -105,7 +109,10 @@ function fmtDuration(v: unknown): string {
 
         <div class="min-w-0 flex-1">
           <div class="truncate text-[16px] text-ncm-fg">{{ item.name }}</div>
-          <div class="truncate text-[13px] text-ncm-faint">{{ item.singer }}</div>
+          <div class="flex min-w-0 items-center gap-2 text-[13px] text-ncm-faint">
+            <span class="truncate">{{ item.singer }}</span>
+            <span class="shrink-0 rounded-md bg-ncm-divider px-2 py-0.5 text-[11px]">{{ SOURCE_LABELS[item.source] || item.source }}</span>
+          </div>
         </div>
 
         <button
@@ -134,7 +141,7 @@ function fmtDuration(v: unknown): string {
     </ul>
 
     <p v-if="list.length" class="mt-4 text-[13px] text-ncm-fainter">
-      双击播放。灰色不可播的曲目通常是版权方限制（VIP 专享 / 已下架）。
+      双击播放。搜索已整合多个音源，可优先选择有播放权限的版本；VIP 专享或下架歌曲需遵守原平台版权要求。
     </p>
   </div>
 </template>

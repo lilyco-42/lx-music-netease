@@ -128,7 +128,7 @@ function fmtTime(ms: number): string {
 
     <div v-if="!list.length" class="mt-10 flex flex-col items-center">
       <img
-        :src="tab === 'fav' ? '/art/empty-favorites.jpg' : '/art/empty-history.jpg'"
+        :src="tab === 'fav' ? './art/empty-favorites.jpg' : './art/empty-history.jpg'"
         alt=""
         class="w-[180px] rounded-cover opacity-90"
         loading="lazy"
@@ -154,9 +154,9 @@ function fmtTime(ms: number): string {
             alt=""
             class="size-full object-cover"
             loading="lazy"
-            @error="($event.target as HTMLImageElement).src = '/art/cover-default.jpg'"
+            @error="($event.target as HTMLImageElement).src = './art/cover-default.jpg'"
           />
-          <img v-else src="/art/cover-default.jpg" alt="" class="size-full object-cover" loading="lazy" />
+          <img v-else :src="'./art/cover-default.jpg'" alt="" class="size-full object-cover" loading="lazy" />
           <button
             type="button"
             class="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100"

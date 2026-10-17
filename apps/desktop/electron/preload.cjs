@@ -13,6 +13,11 @@ contextBridge.exposeInMainWorld('lxmnNative', {
     keys: () => ipcRenderer.invoke('lxmn:storage:keys'),
   },
   appInfo: () => ipcRenderer.invoke('lxmn:app:info'),
+  auth: {
+    save: (token) => ipcRenderer.invoke('lxmn:auth:save', token),
+    load: () => ipcRenderer.invoke('lxmn:auth:load'),
+    clear: () => ipcRenderer.invoke('lxmn:auth:clear'),
+  },
   /** 用系统浏览器打开外部链接（购买页等） */
   openExternal: (url) => ipcRenderer.invoke('lxmn:open-external', url),
 })

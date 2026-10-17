@@ -160,11 +160,11 @@ const vinylStyle = computed(() => ({
                   alt=""
                   class="h-full w-full object-cover"
                   referrerpolicy="no-referrer"
-                  @error="($event.target as HTMLImageElement).src = '/art/cover-default.jpg'"
+                  @error="($event.target as HTMLImageElement).src = './art/cover-default.jpg'"
                 />
                 <img
                   v-else
-                  src="/art/cover-default.jpg"
+                  :src="'./art/cover-default.jpg'"
                   alt=""
                   class="h-full w-full object-cover"
                 />

@@ -87,7 +87,7 @@ function fmtTime(t: number): string {
 
     <!-- 未开通会员：引导去会员页 -->
     <div v-if="!me && !busy" class="mt-10 flex flex-col items-center rounded-nav bg-ncm-surface p-10">
-      <img src="/art/avatar-default.jpg" alt="" class="w-[120px] rounded-full opacity-90" />
+      <img :src="'./art/avatar-default.jpg'" alt="" class="w-[120px] rounded-full opacity-90" />
       <p class="mt-5 text-[16px] text-ncm-fg">好友功能需要音乐会员</p>
       <p class="mt-2 text-[14px] text-ncm-faint">开通后用好友码加好友，同步歌单、看在线状态</p>
       <RouterLink
@@ -99,7 +99,7 @@ function fmtTime(t: number): string {
     <template v-else-if="me">
       <!-- 我的身份卡 -->
       <div class="mt-5 flex items-center gap-5 rounded-nav bg-ncm-surface p-5">
-        <img src="/art/avatar-default.jpg" alt="" class="size-[64px] rounded-full" />
+        <img :src="'./art/avatar-default.jpg'" alt="" class="size-[64px] rounded-full" />
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-3">
             <span class="truncate text-[18px] font-semibold text-ncm-fg">{{ me.nickname }}</span>
@@ -182,7 +182,7 @@ function fmtTime(t: number): string {
             :key="p.id"
             class="flex items-center gap-4 rounded-nav bg-ncm-surface p-4"
           >
-            <img src="/art/avatar-default.jpg" alt="" class="size-[44px] rounded-full" />
+            <img :src="'./art/avatar-default.jpg'" alt="" class="size-[44px] rounded-full" />
             <div class="min-w-0 flex-1">
               <div class="truncate text-[15px] text-ncm-fg">{{ p.nickname }}</div>
               <div class="text-[12px] text-ncm-faint">{{ p.friendCode }} · {{ fmtTime(p.createdAt) }}</div>
@@ -210,7 +210,7 @@ function fmtTime(t: number): string {
             class="group flex items-center gap-4 rounded-nav bg-ncm-surface p-4"
           >
             <div class="relative">
-              <img src="/art/avatar-default.jpg" alt="" class="size-[44px] rounded-full" />
+              <img :src="'./art/avatar-default.jpg'" alt="" class="size-[44px] rounded-full" />
               <span
                 class="absolute bottom-0 right-0 size-[11px] rounded-full border-2 border-ncm-surface"
                 :class="f.online ? 'bg-green-500' : 'bg-ncm-fainter'"
