@@ -107,3 +107,21 @@ describe('CI 注入的构建号', () => {
       .toContain('CURRENT_PROJECT_VERSION = ' + expectedCode + ';')
   })
 })
+
+describe('发布自动化', () => {
+  it('CI 通过 Worker 的 /__mirror 接口镜像到 R2（不需要 R2 S3 密钥）', () => {
+    const wf = read('.github/workflows/release.yml')
+    expect(wf).toContain('/__mirror')
+    expect(wf).toContain('R2_UPLOAD_TOKEN')
+    // 旧做法（aws s3 + S3 Access Key）已经被替换掉：OAuth 建不出那种密钥
+    expect(wf).not.toContain('aws s3 cp')
+  })
+
+  it('镜像 Worker 带令牌校验与来源白名单（不能变成开放代理）', () => {
+    const w = read('deploy/r2-mirror/worker.mjs')
+    expect(w).toContain('/__mirror')
+    expect(w).toContain('UPLOAD_TOKEN')
+    expect(w).toContain('ALLOWED_SRC')
+    expect(w).toContain('sameSecret')
+  })
+})

@@ -30,18 +30,118 @@ const TYPES = {
   txt: 'text/plain; charset=utf-8',
 };
 
+// ---- 受令牌保护的「拉取入库」接口 -------------------------------------
+// 为什么需要它：CI 里没有 R2 的 S3 Access Key（OAuth 令牌建不出 R2 API Token），
+// 但 Worker 自己有 R2 绑定。于是让 Worker 反过来去 lain42.top 把文件拉进桶里：
+// CI 只发一个几十字节的 JSON 请求，几百 MB 的安装包在 Cloudflare 内部传输，
+// 既不需要 S3 密钥，也不会撞到 Worker 的请求体大小限制。
+const MIRROR_MARKER = 'lyco-mirror-note';
+const MIRROR_BANNER =
+  '<div id="lyco-mirror-note" style="margin:0;padding:10px 16px;background:#1b1b1b;' +
+  'border-bottom:1px solid #2a2a2a;color:#c9c9c9;font:13px/1.6 -apple-system,' +
+  'PingFang SC,Microsoft YaHei,sans-serif;text-align:center">你现在打开的是 ' +
+  '<b style="color:#E83A45">Cloudflare R2 边缘镜像</b>，下载更快；主站与完整导航在 ' +
+  '<a href="https://lain42.top/downloads/" style="color:#E83A45">lain42.top/downloads/</a>' +
+  '（本站仅镜像下载页与安装包）</div>';
+
+const ALLOWED_SRC = [
+  'https://lain42.top/downloads/',
+  'https://lain42.top/assets/',
+];
+const ALLOWED_KEY_PREFIX = ['lyco_music/', 'downloads/', 'assets/'];
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+  });
+}
+
+function sameSecret(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let n = 0;
+  for (let i = 0; i < a.length; i++) n |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return n === 0;
+}
+
+function guessType(key) {
+  const ext = key.includes('.') ? key.split('.').pop() : '';
+  return TYPES[ext] ?? 'application/octet-stream';
+}
+
+async function handleMirror(request, env) {
+  if (!env.UPLOAD_TOKEN) return json({ error: 'upload not configured' }, 503);
+  const auth = request.headers.get('authorization') || '';
+  const token = (auth.replace(/^Bearer\s+/i, '') || request.headers.get('x-upload-token') || '').trim();
+  if (!sameSecret(token, env.UPLOAD_TOKEN)) return json({ error: 'forbidden' }, 403);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'bad json' }, 400);
+  }
+  const key = String(body.key || '').replace(/^\/+/, '');
+  const src = String(body.src || '');
+  if (!key || key.includes('..') || !ALLOWED_KEY_PREFIX.some((p) => key.startsWith(p))) {
+    return json({ error: 'bad key' }, 400);
+  }
+  if (!ALLOWED_SRC.some((p) => src.startsWith(p))) {
+    return json({ error: 'src not allowed' }, 400);
+  }
+
+  const upstream = await fetch(src, { headers: { 'user-agent': 'lyco-r2-mirror/1' } });
+  if (!upstream.ok || !upstream.body) {
+    return json({ error: 'upstream ' + upstream.status }, 502);
+  }
+
+  // 镜像下载页时顺手注入「你在镜像站」的说明条：页面很小，缓冲处理即可。
+  // 幂等：已经有标记就不再注入，本地脚本预先注入过也不会变两层。
+  if (key === 'downloads/index.html') {
+    const html = await upstream.text();
+    const withBanner = html.includes(MIRROR_MARKER)
+      ? html
+      : html.replace(/<body[^>]*>/i, (m) => m + '\n' + MIRROR_BANNER);
+    const obj = await env.BUCKET.put(key, withBanner, {
+      httpMetadata: { contentType: 'text/html; charset=utf-8' },
+    });
+    return json({ ok: true, key, size: obj.size, banner: true });
+  }
+
+  const obj = await env.BUCKET.put(key, upstream.body, {
+    httpMetadata: {
+      contentType: upstream.headers.get('content-type') || guessType(key),
+    },
+  });
+  return json({ ok: true, key, size: obj.size, etag: obj.httpEtag });
+}
+
 function notFound() {
   return new Response('Not Found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
 }
 
 export default {
   async fetch(request, env) {
-    if (!['GET', 'HEAD'].includes(request.method)) {
+    if (!['GET', 'HEAD', 'POST'].includes(request.method)) {
       return new Response('Method Not Allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
     }
     const url = new URL(request.url);
     if (url.pathname === '/health') {
-      return Response.json({ ok: true, storage: 'R2', bucket: env.BUCKET?.bucketName ?? 'lyco-music-dl' });
+      return Response.json({
+        ok: true,
+        storage: 'R2',
+        bucket: env.BUCKET?.bucketName ?? 'lyco-music-dl',
+        upload: Boolean(env.UPLOAD_TOKEN),
+      });
+    }
+    if (url.pathname === '/__mirror/check') {
+      return json({ upload: Boolean(env.UPLOAD_TOKEN) });
+    }
+    if (url.pathname === '/__mirror') {
+      if (request.method !== 'POST') {
+        return new Response('Method Not Allowed', { status: 405, headers: { Allow: 'POST' } });
+      }
+      return handleMirror(request, env);
     }
 
     let key = decodeURIComponent(url.pathname).replace(/^\/+/, '');
